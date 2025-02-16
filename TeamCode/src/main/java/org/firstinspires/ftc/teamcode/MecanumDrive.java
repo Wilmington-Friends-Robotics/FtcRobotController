@@ -58,8 +58,8 @@ class MecanumDrive {
             imu = hardwareMap.get(IMU.class, "imu");
             IMU.Parameters parameters = new IMU.Parameters(
                 new ImuOrientationOnRobot(
-                    ImuOrientationOnRobot.LogoFacingDirection.UP,
-                    ImuOrientationOnRobot.UsbFacingDirection.FORWARD
+                    ImuOrientationOnRobot.LogoFacingDirection.FORWARD,  // Logo is facing right when looking at the robot from the back
+                    ImuOrientationOnRobot.UsbFacingDirection.FORWARD    // USB/Servo ports are also facing right
                 )
             );
             imu.initialize(parameters);
