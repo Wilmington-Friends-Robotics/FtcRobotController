@@ -183,6 +183,7 @@ public class IntoTheDeepTeleOp extends OpMode {
                     } else if (timer.seconds() - clawCloseTime >= CLAW_CLOSE_WAIT_TIME) {
                         claw.moveToHigh();
                         claw.elbowForward();
+                        claw.wristUp();
                         isInScoringSequence = false;
                         isWaitingToMoveHigh = false;
                     }

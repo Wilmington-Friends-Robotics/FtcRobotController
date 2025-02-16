@@ -4,6 +4,7 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.TouchSensor;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
 public class Claw {
     private DcMotor slideMotor;
@@ -11,6 +12,10 @@ public class Claw {
     private Servo wristServo;
     private Servo elbowServo;
     private TouchSensor limitSwitch;
+    private ElapsedTime moveTimer;
+    private int lastPosition;
+    private static final double MOVE_TIMEOUT = 1.0; // 1 second timeout
+    private static final int MIN_ENCODER_CHANGE = 5; // Minimum encoder change to consider movement
     
     // Servo positions
     private static final double CLAW_OPEN = 0.1;
@@ -67,6 +72,10 @@ public class Claw {
             throw new RuntimeException("Failed to initialize servos: " + e.getMessage());
         }
         
+        // Initialize timer and position tracking
+        moveTimer = new ElapsedTime();
+        lastPosition = 0;
+        
         // Initialize to safe starting position
         closeClaw();
         wristUp();
@@ -106,6 +115,10 @@ public class Claw {
     
     // Slide control methods
     public void moveToPosition(int targetPosition) {
+        // Reset timer and last position when starting a new movement
+        moveTimer.reset();
+        lastPosition = slideMotor.getCurrentPosition();
+        
         slideMotor.setTargetPosition(targetPosition);
         slideMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         slideMotor.setPower(SLIDE_POWER);
@@ -128,9 +141,34 @@ public class Claw {
         moveToPosition(SLIDE_HIGH);
     }
     
-    // Check if slide is at target position
+    // Check if slide is at target position or stuck
     public boolean isAtTargetPosition() {
-        return Math.abs(slideMotor.getCurrentPosition() - slideMotor.getTargetPosition()) < POSITION_TOLERANCE;
+        int currentPosition = slideMotor.getCurrentPosition();
+        int targetPosition = slideMotor.getTargetPosition();
+        
+        // If we're already at the target, return true
+        if (Math.abs(currentPosition - targetPosition) < POSITION_TOLERANCE) {
+            return true;
+        }
+        
+        // Check if we're stuck or moving too slowly
+        if (moveTimer.seconds() > MOVE_TIMEOUT) {
+            int positionChange = Math.abs(currentPosition - lastPosition);
+            if (positionChange < MIN_ENCODER_CHANGE) {
+                // Slide is stuck or moving too slowly, force it to target
+                slideMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+                slideMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+                slideMotor.setTargetPosition(targetPosition);
+                slideMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+                slideMotor.setPower(SLIDE_POWER);
+                return true;
+            }
+            // Reset timer and update last position for next check
+            moveTimer.reset();
+            lastPosition = currentPosition;
+        }
+        
+        return false;
     }
     
     // Check if limit switch is pressed
