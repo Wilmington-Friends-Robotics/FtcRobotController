@@ -64,9 +64,9 @@ public class Claw {
             slideMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
             slideMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
             
-            // Configure second slide motor to match
+            // Configure second slide motor to match but with opposite direction
             slideMotor2.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-            slideMotor2.setDirection(DcMotor.Direction.REVERSE); // May need to be adjusted based on motor orientation
+            slideMotor2.setDirection(DcMotor.Direction.FORWARD); // Opposite direction of first motor
             slideMotor2.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
             slideMotor2.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         } catch (Exception e) {
