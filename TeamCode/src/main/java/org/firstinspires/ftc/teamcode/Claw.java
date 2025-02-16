@@ -8,6 +8,7 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 
 public class Claw {
     private DcMotor slideMotor;
+    private DcMotor slideMotor2; // Second slide motor
     private Servo clawServo;
     private Servo wristServo;
     private Servo elbowServo;
@@ -52,15 +53,24 @@ public class Claw {
                 "Error: " + e.getMessage());
         }
         
-        // Initialize slide motor
+        // Initialize slide motors
         try {
             slideMotor = hardwareMap.get(DcMotor.class, "vertical_slide");
+            slideMotor2 = hardwareMap.get(DcMotor.class, "vertical_slide2");
+            
+            // Configure main slide motor
             slideMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
             slideMotor.setDirection(DcMotor.Direction.REVERSE);
             slideMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
             slideMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+            
+            // Configure second slide motor to match
+            slideMotor2.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+            slideMotor2.setDirection(DcMotor.Direction.REVERSE); // May need to be adjusted based on motor orientation
+            slideMotor2.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            slideMotor2.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         } catch (Exception e) {
-            throw new RuntimeException("Failed to initialize slide motor: " + e.getMessage());
+            throw new RuntimeException("Failed to initialize slide motors: " + e.getMessage());
         }
         
         // Initialize servos
@@ -119,9 +129,17 @@ public class Claw {
         moveTimer.reset();
         lastPosition = slideMotor.getCurrentPosition();
         
+        // Set target position for both motors
         slideMotor.setTargetPosition(targetPosition);
+        slideMotor2.setTargetPosition(targetPosition);
+        
+        // Set both motors to RUN_TO_POSITION mode
         slideMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        slideMotor2.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        
+        // Apply power to both motors
         slideMotor.setPower(SLIDE_POWER);
+        slideMotor2.setPower(SLIDE_POWER);
     }
     
     public void moveToGround() {
@@ -155,12 +173,21 @@ public class Claw {
         if (moveTimer.seconds() > MOVE_TIMEOUT) {
             int positionChange = Math.abs(currentPosition - lastPosition);
             if (positionChange < MIN_ENCODER_CHANGE) {
-                // Slide is stuck or moving too slowly, force it to target
+                // Slide is stuck or moving too slowly, force both motors to target
                 slideMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+                slideMotor2.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+                
                 slideMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+                slideMotor2.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+                
                 slideMotor.setTargetPosition(targetPosition);
+                slideMotor2.setTargetPosition(targetPosition);
+                
                 slideMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+                slideMotor2.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+                
                 slideMotor.setPower(SLIDE_POWER);
+                slideMotor2.setPower(SLIDE_POWER);
                 return true;
             }
             // Reset timer and update last position for next check
@@ -179,34 +206,50 @@ public class Claw {
     // Method to check and handle limit switch during ground movement
     public void checkLimitSwitch() {
         if (isLimitSwitchPressed()) {
-            // Stop the motor
+            // Stop both motors
             slideMotor.setPower(0);
-            // Reset encoder position since we're at the bottom
+            slideMotor2.setPower(0);
+            
+            // Reset encoder position for both motors since we're at the bottom
             slideMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+            slideMotor2.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+            
             slideMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-            // Apply holding power
+            slideMotor2.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            
+            // Apply holding power to both motors
             slideMotor.setPower(HOLDING_POWER);
+            slideMotor2.setPower(HOLDING_POWER);
         }
     }
     
-    // Emergency stop for the slide
+    // Emergency stop for both slides
     public void stopSlide() {
         slideMotor.setPower(HOLDING_POWER);  // Use holding power instead of full stop
+        slideMotor2.setPower(HOLDING_POWER);
         slideMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        slideMotor2.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
     }
     
     // Set slide power with automatic holding power when near zero
     public void setSlidePower(double power) {
         if (Math.abs(power) < 0.01) {
             slideMotor.setPower(HOLDING_POWER);
+            slideMotor2.setPower(HOLDING_POWER);
         } else {
             slideMotor.setPower(power);
+            slideMotor2.setPower(power);
         }
     }
     
-    // Get current slide position
+    // Get current slide position (using main slide as reference)
     public int getCurrentPosition() {
         return slideMotor.getCurrentPosition();
+    }
+    
+    // Get current position of second slide
+    public int getSecondSlidePosition() {
+        return slideMotor2.getCurrentPosition();
     }
     
     // Getter methods for servo positions
