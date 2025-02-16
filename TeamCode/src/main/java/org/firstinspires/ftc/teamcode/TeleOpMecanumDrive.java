@@ -19,13 +19,14 @@ public class TeleOpMecanumDrive extends OpMode {
         DcMotor backRightMotor = hardwareMap.get(DcMotor.class, "back_right");
 
         // Initialize subsystems
-        mecanumDrive = new MecanumDrive(frontLeftMotor, frontRightMotor, backLeftMotor, backRightMotor);
+        mecanumDrive = new MecanumDrive(hardwareMap, frontLeftMotor, frontRightMotor, backLeftMotor, backRightMotor);
         joystickController = new JoystickController(gamepad1, mecanumDrive);
 
         // Initialize the complete robot
         robot = new Robot(mecanumDrive, joystickController);
         
         telemetry.addData("Status", "Initialized");
+        telemetry.addData("Instructions", "Forward = Field Forward (relative to start)");
         telemetry.update();
     }
 

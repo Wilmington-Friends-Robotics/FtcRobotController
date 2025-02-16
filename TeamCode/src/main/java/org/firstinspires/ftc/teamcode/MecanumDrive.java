@@ -1,8 +1,17 @@
 package org.firstinspires.ftc.teamcode;
 
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.HardwareMap;
+import com.qualcomm.robotcore.hardware.IMU;
+import com.qualcomm.robotcore.hardware.ImuOrientationOnRobot;
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
 
 class MecanumDrive {
+    private DcMotor frontLeft, frontRight, backLeft, backRight;
+    private IMU imu;
+    private double headingOffset = 0.0; // Stores the initial heading offset
+
     // Getter methods to access motor positions
     public int getFrontLeftPosition() {
         return frontLeft.getCurrentPosition();
@@ -37,19 +46,72 @@ class MecanumDrive {
         return backRight.getPower();
     }
 
-    private DcMotor frontLeft, frontRight, backLeft, backRight;
-
-    // Constructor to initialize all four drive motors
-    public MecanumDrive(DcMotor frontLeft, DcMotor frontRight, DcMotor backLeft, DcMotor backRight) {
+    // Constructor to initialize all four drive motors and IMU
+    public MecanumDrive(HardwareMap hardwareMap, DcMotor frontLeft, DcMotor frontRight, DcMotor backLeft, DcMotor backRight) {
         this.frontLeft = frontLeft;
         this.frontRight = frontRight;
         this.backLeft = backLeft;
         this.backRight = backRight;
-        System.out.println("Mecanum drive initialized");
+
+        // Initialize IMU
+        try {
+            imu = hardwareMap.get(IMU.class, "imu");
+            IMU.Parameters parameters = new IMU.Parameters(
+                new ImuOrientationOnRobot(
+                    ImuOrientationOnRobot.LogoFacingDirection.UP,
+                    ImuOrientationOnRobot.UsbFacingDirection.FORWARD
+                )
+            );
+            imu.initialize(parameters);
+            resetHeading(); // Store initial heading
+            System.out.println("Mecanum drive and IMU initialized");
+        } catch (Exception e) {
+            System.out.println("Failed to initialize IMU: " + e.getMessage());
+            imu = null;
+        }
     }
 
-    // Method to drive the robot using mecanum wheels
+    // Reset the heading offset to make current heading the zero heading
+    public void resetHeading() {
+        if (imu != null) {
+            YawPitchRollAngles orientation = imu.getRobotYawPitchRollAngles();
+            headingOffset = orientation.getYaw(AngleUnit.RADIANS);
+        }
+    }
+
+    // Get the current heading relative to the initial heading
+    private double getHeading() {
+        if (imu != null) {
+            YawPitchRollAngles orientation = imu.getRobotYawPitchRollAngles();
+            return orientation.getYaw(AngleUnit.RADIANS) - headingOffset;
+        }
+        return 0.0;
+    }
+
+    // Method to drive the robot using mecanum wheels with field-centric control
     public void drive(double forward, double strafe, double rotate) {
+        // If IMU is not available, fall back to robot-centric control
+        if (imu == null) {
+            driveRobotCentric(forward, strafe, rotate);
+            return;
+        }
+
+        // Get the robot's heading
+        double heading = getHeading();
+
+        // Convert desired field-relative motion to robot-relative motion
+        double sin = Math.sin(heading);
+        double cos = Math.cos(heading);
+        
+        double fieldForward = forward * cos + strafe * sin;
+        double fieldStrafe = -forward * sin + strafe * cos;
+
+        // Drive with the converted values
+        driveRobotCentric(fieldForward, fieldStrafe, rotate);
+    }
+
+    // Robot-centric driving method
+    private void driveRobotCentric(double forward, double strafe, double rotate) {
         // Calculate power for each wheel based on forward, strafe, and rotate inputs
         double frontLeftPower = -forward + strafe - rotate;
         double frontRightPower = forward + strafe - rotate;
@@ -66,12 +128,13 @@ class MecanumDrive {
             backRightPower /= maxPower;
         }
 
-        // Set power to each motor without changing signs.
+        // Set power to each motor
         frontLeft.setPower(-frontLeftPower);
         frontRight.setPower(frontRightPower);
         backLeft.setPower(-backLeftPower);
         backRight.setPower(backRightPower);
-        System.out.println(String.format("Drive command - FrontLeft: %2.2f, FrontRight: %2.2f, BackLeft: %2.2f, BackRight: %2.2f", frontLeftPower, frontRightPower, backLeftPower, backRightPower));
+        System.out.println(String.format("Drive command - FrontLeft: %2.2f, FrontRight: %2.2f, BackLeft: %2.2f, BackRight: %2.2f", 
+            frontLeftPower, frontRightPower, backLeftPower, backRightPower));
     }
 
     // Method to reset encoders and set motors to the desired mode
@@ -97,9 +160,6 @@ class MecanumDrive {
         backLeft.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         backRight.setMode(DcMotor.RunMode.RUN_TO_POSITION);
     }
-
-    // Method to set target position for all motors
-
 
     // Method to check if all motors are busy
     public boolean isBusy() {

@@ -57,7 +57,7 @@ public class IntoTheDeepTeleOp extends OpMode {
         DcMotor backRightMotor = hardwareMap.get(DcMotor.class, "back_right");
 
         // Initialize subsystems
-        mecanumDrive = new MecanumDrive(frontLeftMotor, frontRightMotor, backLeftMotor, backRightMotor);
+        mecanumDrive = new MecanumDrive(hardwareMap, frontLeftMotor, frontRightMotor, backLeftMotor, backRightMotor);
         joystickController = new JoystickController(gamepad1, mecanumDrive);
         intake = new Intake(hardwareMap, "intake_slide");
         claw = new Claw(hardwareMap);

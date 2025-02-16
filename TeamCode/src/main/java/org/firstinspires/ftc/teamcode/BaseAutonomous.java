@@ -18,7 +18,7 @@ abstract class BaseAutonomous extends LinearOpMode {
         System.out.println("Hardware devices initialized");
 
         // Initialize subsystems: Mecanum drive and the complete robot
-        mecanumDrive = new MecanumDrive(frontLeftMotor, frontRightMotor, backLeftMotor, backRightMotor);
+        mecanumDrive = new MecanumDrive(hardwareMap, frontLeftMotor, frontRightMotor, backLeftMotor, backRightMotor);
         robot = new Robot(mecanumDrive, null); // No joystick controller needed for autonomous
         System.out.println("Subsystems initialized");
 
@@ -32,6 +32,10 @@ abstract class BaseAutonomous extends LinearOpMode {
         // Wait for the start button to be pressed
         System.out.println("Waiting for start");
         waitForStart();
+
+        // Reset IMU heading at start to establish field-centric forward direction
+        mecanumDrive.resetHeading();
+        System.out.println("IMU heading reset - field-centric forward direction established");
 
         // Run the autonomous sequence
         while (opModeIsActive()) {
