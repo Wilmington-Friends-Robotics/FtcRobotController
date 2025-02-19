@@ -50,14 +50,14 @@ public class IntoTheDeepTeleOp extends OpMode {
 
     @Override
     public void init() {
-        // Initialize drive motors
+        // Initialize hardware devices
         DcMotor frontLeftMotor = hardwareMap.get(DcMotor.class, "front_left");
         DcMotor frontRightMotor = hardwareMap.get(DcMotor.class, "front_right");
         DcMotor backLeftMotor = hardwareMap.get(DcMotor.class, "back_left");
         DcMotor backRightMotor = hardwareMap.get(DcMotor.class, "back_right");
 
         // Initialize subsystems
-        mecanumDrive = new MecanumDrive(hardwareMap, frontLeftMotor, frontRightMotor, backLeftMotor, backRightMotor);
+        mecanumDrive = new MecanumDrive(hardwareMap, frontLeftMotor, frontRightMotor, backLeftMotor, backRightMotor, telemetry);
         joystickController = new JoystickController(gamepad1, mecanumDrive);
         intake = new Intake(hardwareMap, "intake_slide");
         claw = new Claw(hardwareMap);
@@ -84,16 +84,23 @@ public class IntoTheDeepTeleOp extends OpMode {
         // Initial robot setup - move to starting position
         claw.moveToGround();  // Move slide to ground position
         claw.elbowUp();       // Raise elbow
-        //intake.in();          // Retract intake
+        intake.midIntake();   // Set intake to middle position
         
-        telemetry.addData("Status", "Initialized - Moving to ground position and retracting intake");
+        telemetry.addData("Status", "Initialized - Moving to ground position and setting intake to middle");
         telemetry.update();
     }
 
     @Override
     public void loop() {
-        // Update drive controls from joystick input
+        // Update joystick control to drive the robot
         joystickController.update();
+        
+        // Display motor powers
+        telemetry.addData("Front Left Power", "%.2f", mecanumDrive.getFrontLeftPower());
+        telemetry.addData("Front Right Power", "%.2f", mecanumDrive.getFrontRightPower());
+        telemetry.addData("Back Left Power", "%.2f", mecanumDrive.getBackLeftPower());
+        telemetry.addData("Back Right Power", "%.2f", mecanumDrive.getBackRightPower());
+        telemetry.update();
         
         // Manual intake motor control
         if (gamepad1.dpad_up) {

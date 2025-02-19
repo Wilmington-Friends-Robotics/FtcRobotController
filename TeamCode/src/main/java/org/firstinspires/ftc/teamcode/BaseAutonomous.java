@@ -18,7 +18,7 @@ abstract class BaseAutonomous extends LinearOpMode {
         System.out.println("Hardware devices initialized");
 
         // Initialize subsystems: Mecanum drive and the complete robot
-        mecanumDrive = new MecanumDrive(hardwareMap, frontLeftMotor, frontRightMotor, backLeftMotor, backRightMotor);
+        mecanumDrive = new MecanumDrive(hardwareMap, frontLeftMotor, frontRightMotor, backLeftMotor, backRightMotor, telemetry);
         robot = new Robot(mecanumDrive, null); // No joystick controller needed for autonomous
         System.out.println("Subsystems initialized");
 

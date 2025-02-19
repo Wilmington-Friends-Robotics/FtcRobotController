@@ -3,14 +3,16 @@ package org.firstinspires.ftc.teamcode;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.IMU;
-import com.qualcomm.robotcore.hardware.ImuOrientationOnRobot;
+import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
+import org.firstinspires.ftc.robotcore.external.Telemetry;
 
 class MecanumDrive {
     private DcMotor frontLeft, frontRight, backLeft, backRight;
-    private IMU imu;
+    private Odometry odometry;  // Replace IMU with Odometry
     private double headingOffset = 0.0; // Stores the initial heading offset
+    private Telemetry telemetry;  // Add telemetry field
 
     // Getter methods to access motor positions
     public int getFrontLeftPosition() {
@@ -47,54 +49,68 @@ class MecanumDrive {
     }
 
     // Constructor to initialize all four drive motors and IMU
-    public MecanumDrive(HardwareMap hardwareMap, DcMotor frontLeft, DcMotor frontRight, DcMotor backLeft, DcMotor backRight) {
+    public MecanumDrive(HardwareMap hardwareMap, DcMotor frontLeft, DcMotor frontRight, DcMotor backLeft, DcMotor backRight, Telemetry telemetry) {
         this.frontLeft = frontLeft;
         this.frontRight = frontRight;
         this.backLeft = backLeft;
         this.backRight = backRight;
+        this.telemetry = telemetry;
 
-        // Initialize IMU
+        // Set brake mode for all drive motors
+        frontLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        frontRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        backLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        backRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+
+        // Initialize Odometry
         try {
-            imu = hardwareMap.get(IMU.class, "imu");
-            IMU.Parameters parameters = new IMU.Parameters(
-                new ImuOrientationOnRobot(
-                    ImuOrientationOnRobot.LogoFacingDirection.FORWARD,  // Logo is facing right when looking at the robot from the back
-                    ImuOrientationOnRobot.UsbFacingDirection.FORWARD    // USB/Servo ports are also facing right
-                )
-            );
-            imu.initialize(parameters);
+            odometry = new Odometry(hardwareMap);
             resetHeading(); // Store initial heading
-            System.out.println("Mecanum drive and IMU initialized");
+            telemetry.addData("Odometry Status", "Initialized Successfully");
+            System.out.println("Mecanum drive and Odometry initialized");
         } catch (Exception e) {
-            System.out.println("Failed to initialize IMU: " + e.getMessage());
-            imu = null;
+            telemetry.addData("Odometry Status", "Failed to Initialize: %s", e.getMessage());
+            System.out.println("Failed to initialize Odometry: " + e.getMessage());
+            odometry = null;
         }
+        telemetry.update();
     }
 
     // Reset the heading offset to make current heading the zero heading
     public void resetHeading() {
-        if (imu != null) {
-            YawPitchRollAngles orientation = imu.getRobotYawPitchRollAngles();
-            headingOffset = orientation.getYaw(AngleUnit.RADIANS);
+        if (odometry != null) {
+            odometry.resetHeading();
+            headingOffset = odometry.getHeading();
+            telemetry.addData("Heading Reset", "Success - New Offset: %.2f", headingOffset);
+        } else {
+            telemetry.addData("Heading Reset", "Failed - Odometry is null");
         }
+        telemetry.update();
     }
 
     // Get the current heading relative to the initial heading
     private double getHeading() {
-        if (imu != null) {
-            YawPitchRollAngles orientation = imu.getRobotYawPitchRollAngles();
-            return orientation.getYaw(AngleUnit.RADIANS) - headingOffset;
+        if (odometry != null) {
+            return odometry.getHeading() - headingOffset;
         }
+        telemetry.addData("Heading", "No Data - Odometry is null");
+        telemetry.update();
         return 0.0;
     }
 
     // Method to drive the robot using mecanum wheels with field-centric control
     public void drive(double forward, double strafe, double rotate) {
-        // If IMU is not available, fall back to robot-centric control
-        if (imu == null) {
+        // If odometry is not available, fall back to robot-centric control
+        if (odometry == null) {
+            telemetry.addData("Drive Mode", "Robot-Centric (Odometry Unavailable)");
+            telemetry.update();
             driveRobotCentric(forward, strafe, rotate);
             return;
         }
+
+        telemetry.addData("Drive Mode", "Field-Centric");
+        telemetry.addData("Heading", "%.2f degrees", Math.toDegrees(getHeading()));
+        telemetry.update();
 
         // Get the robot's heading
         double heading = getHeading();
@@ -114,7 +130,7 @@ class MecanumDrive {
     private void driveRobotCentric(double forward, double strafe, double rotate) {
         // Calculate power for each wheel based on forward, strafe, and rotate inputs
         double frontLeftPower = -forward + strafe - rotate;
-        double frontRightPower = forward + strafe - rotate;
+        double frontRightPower = -forward - strafe + rotate;
         double backLeftPower = -forward - strafe - rotate;
         double backRightPower = -forward + strafe + rotate;
 
