@@ -40,6 +40,7 @@ public class Claw {
     private static final double SLIDE_POWER = 1;
     private static final double HOLDING_POWER = 0.1;  // Power to hold against gravity
     private static final int POSITION_TOLERANCE = 10;
+    private static final double FOLLOWER_POWER = 1.0; // Full power for follower to maintain position
     
     // Add state tracking for second slide
     private boolean isSlide2Active = false;
@@ -178,6 +179,12 @@ public class Claw {
         moveToPosition(SLIDE_HIGH);
     }
     
+    // New method to update second slide position
+    public void updateSecondSlide() {
+        int mainPosition = slideMotor.getCurrentPosition();
+        slideMotor2.setTargetPosition(mainPosition);
+    }
+    
     // Check if slide is at target position or stuck
     public boolean isAtTargetPosition() {
         int currentPosition = slideMotor.getCurrentPosition();
@@ -261,6 +268,7 @@ public class Claw {
                 slideMotor2.setPower(power);
             }
         }
+        // Second motor maintains full power to follow position
     }
     
     // Get current slide position (using main slide as reference)

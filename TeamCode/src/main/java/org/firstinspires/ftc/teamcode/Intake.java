@@ -13,7 +13,7 @@ public class Intake {
     private boolean isOut = false; // Tracks whether intake is out (false = in, true = out)
     private static final double INTAKE_POWER = 0.5;  // Adjust this value for desired speed
     private static final double SERVO_UP_POSITION = 0.25;    // Servo position for intake up
-    private static final double SERVO_MID_POSITION = 0.4;  // Servo position for intake mid
+    private static final double SERVO_MID_POSITION = 0.45;  // Servo position for intake mid
     private static final double SERVO_DOWN_POSITION = 1.0;  // Servo position for intake down (180 degrees)
     private static final double MOTOR_RUN_TIME_MS = 500;  // Time to run motor in milliseconds
     
@@ -62,18 +62,18 @@ public class Intake {
     }
 
     // Raise the intake mechanism
-    public void up(boolean Up) {
+    public void up(boolean toMiddle) {
         // Stop flywheel
         flywheel.stop();
         
         // Only move servo if not already up
         if (isOut) {
-            if (Up) {
-                // Raise intake mechanism
-                raiseIntake();
-            } else {
-                // Raise intake mechanism
+            if (toMiddle) {
+                // Move to middle position
                 midIntake();
+            } else {
+                // Raise intake mechanism fully
+                raiseIntake();
             }
             isOut = false;
         }
@@ -101,9 +101,9 @@ public class Intake {
     }
 
     // Retract intake until it stops moving
-    public void in(boolean Up) {
+    public void in(boolean toMiddle) {
         // First raise the intake mechanism
-        up(Up);
+        up(toMiddle);
         
         // Start moving the motor inward
         backward();
