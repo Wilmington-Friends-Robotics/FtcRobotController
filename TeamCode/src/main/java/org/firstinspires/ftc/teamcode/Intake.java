@@ -23,7 +23,7 @@ public class Intake {
         flywheel = new Flywheel(hardwareMap, "flywheel");
         timer = new ElapsedTime();
         stop(); // Initialize in stopped position
-        midIntake(); // Start with intake in mid position
+        midIntake(); // Start with intake in middle position
         isOut = false; // Initialize state as in
     }
     

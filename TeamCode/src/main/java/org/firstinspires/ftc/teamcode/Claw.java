@@ -23,9 +23,9 @@ public class Claw {
     private static final double CLAW_CLOSED = 0.7;
     private static final double WRIST_UP = 0.2;
     private static final double WRIST_DOWN = 0.55;
-    private static final double ELBOW_UP = 0.65;      // Fully raised position
-    private static final double ELBOW_FORWARD = 0.35;  // Horizontal position
-    private static final double ELBOW_DOWN = 0.0;     // Fully lowered position
+    public static final double ELBOW_UP = 0.65;      // Fully raised position
+    public static final double ELBOW_FORWARD = 0.35;  // Horizontal position
+    public static final double ELBOW_DOWN = 0.0;     // Fully lowered position
     
     // Slide positions (in encoder ticks)
     private static final int SLIDE_GROUND = 0;
@@ -33,11 +33,24 @@ public class Claw {
     private static final int SLIDE_MEDIUM = 1350;
     private static final int SLIDE_HIGH = 3000;
     
+    // Add minimum position for slide2
+    private static final int SLIDE2_MIN_POSITION = 200;
+    
     // Slide movement parameters
-    private static final double SLIDE_POWER = 0.8;
+    private static final double SLIDE_POWER = 1;
     private static final double HOLDING_POWER = 0.1;  // Power to hold against gravity
     private static final int POSITION_TOLERANCE = 10;
     private static final double FOLLOWER_POWER = 1.0; // Full power for follower to maintain position
+    
+    // Add state tracking for second slide
+    private boolean isSlide2Active = false;
+    private boolean isSlide2Syncing = false;
+    private int slide2TargetPosition = 0;
+    private static final int SYNC_TOLERANCE = 50; // Encoder ticks tolerance for considering slides synced
+    
+    // Add variables for gradual elbow movement
+    private double currentElbowPosition = ELBOW_UP;  // Track current position
+    private static final double ELBOW_MOVE_STEP = 0.02;  // How much to move per update
     
     public Claw(HardwareMap hardwareMap) {
         // Initialize limit switch first to fail fast if there's an issue
@@ -62,17 +75,18 @@ public class Claw {
             // Configure main slide motor
             slideMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
             slideMotor.setDirection(DcMotor.Direction.REVERSE);
-            slideMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
             slideMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+            slideMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            slideMotor.setPower(0);
             
-            // Configure second slide motor as a follower
+            // Configure second slide motor and move to initial position
             slideMotor2.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-            slideMotor2.setDirection(DcMotor.Direction.FORWARD); // Opposite direction
-            slideMotor2.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            slideMotor2.setDirection(DcMotor.Direction.FORWARD);
             slideMotor2.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-            slideMotor2.setTargetPosition(0); // Set initial target position
+            slideMotor2.setTargetPosition(SLIDE2_MIN_POSITION);
             slideMotor2.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            slideMotor2.setPower(FOLLOWER_POWER); // Keep full power to maintain position
+            slideMotor2.setPower(SLIDE_POWER);
+            isSlide2Active = false;  // Ensure it starts inactive
         } catch (Exception e) {
             throw new RuntimeException("Failed to initialize slide motors: " + e.getMessage());
         }
@@ -116,29 +130,36 @@ public class Claw {
     
     // Elbow control methods
     public void elbowUp() {
+        currentElbowPosition = ELBOW_UP;
         elbowServo.setPosition(ELBOW_UP);
     }
     
     public void elbowForward() {
+        currentElbowPosition = ELBOW_FORWARD;
         elbowServo.setPosition(ELBOW_FORWARD);
     }
     
     public void elbowDown() {
+        currentElbowPosition = ELBOW_DOWN;
         elbowServo.setPosition(ELBOW_DOWN);
     }
     
     // Slide control methods
     public void moveToPosition(int targetPosition) {
-        // Reset timer and last position when starting a new movement
         moveTimer.reset();
         lastPosition = slideMotor.getCurrentPosition();
-        
-        // Set target position for main motor
-        slideMotor.setTargetPosition(targetPosition);
+
         slideMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        slideMotor.setTargetPosition(targetPosition);
         slideMotor.setPower(SLIDE_POWER);
-        
-        // Second motor will update in updateSecondSlide()
+
+        // Only control second slide if it's active, and ensure minimum position
+        if (isSlide2Active) {
+            slideMotor2.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+            int slide2Target = Math.max(targetPosition, SLIDE2_MIN_POSITION);
+            slideMotor2.setTargetPosition(slide2Target);
+            slideMotor2.setPower(SLIDE_POWER);
+        }
     }
     
     public void moveToGround() {
@@ -171,6 +192,14 @@ public class Claw {
         
         // If we're already at the target, return true
         if (Math.abs(currentPosition - targetPosition) < POSITION_TOLERANCE) {
+            // Keep minimal power to hold position
+            double holdingPower = (targetPosition > 100) ? HOLDING_POWER : 0;
+            slideMotor.setPower(holdingPower);
+            if (isSlide2Active) {
+                slideMotor2.setPower(holdingPower);
+            } else {
+                slideMotor2.setPower(0);
+            }
             return true;
         }
         
@@ -178,14 +207,8 @@ public class Claw {
         if (moveTimer.seconds() > MOVE_TIMEOUT) {
             int positionChange = Math.abs(currentPosition - lastPosition);
             if (positionChange < MIN_ENCODER_CHANGE) {
-                // Slide is stuck or moving too slowly, force main motor to target
-                slideMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-                slideMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-                slideMotor.setTargetPosition(targetPosition);
-                slideMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-                slideMotor.setPower(SLIDE_POWER);
-                
-                // Second motor will update in updateSecondSlide()
+                // Slide is stuck or moving too slowly
+                stopSlide();
                 return true;
             }
             // Reset timer and update last position for next check
@@ -205,35 +228,45 @@ public class Claw {
     public void checkLimitSwitch() {
         if (isLimitSwitchPressed()) {
             // Stop both motors
+            slideMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            slideMotor2.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
             slideMotor.setPower(0);
             slideMotor2.setPower(0);
             
-            // Reset encoder position for both motors since we're at the bottom
+            // Reset encoder positions
             slideMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
             slideMotor2.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-            
             slideMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-            slideMotor2.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            
-            // Apply power (main motor gets holding power, follower keeps full power)
-            slideMotor.setPower(HOLDING_POWER);
-            slideMotor2.setPower(FOLLOWER_POWER);
+            slideMotor2.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         }
     }
     
     // Emergency stop for both slides
     public void stopSlide() {
-        slideMotor.setPower(HOLDING_POWER);  // Use holding power for main motor
-        slideMotor2.setPower(FOLLOWER_POWER); // Keep full power for follower
         slideMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        if (isSlide2Active) {
+            slideMotor2.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        }
+
+        double holdingPower = (slideMotor.getCurrentPosition() > 100) ? HOLDING_POWER : 0;
+        slideMotor.setPower(holdingPower);
+        if (isSlide2Active) {
+            slideMotor2.setPower(holdingPower);
+        }
     }
     
     // Set slide power with automatic holding power when near zero
     public void setSlidePower(double power) {
         if (Math.abs(power) < 0.01) {
             slideMotor.setPower(HOLDING_POWER);
+            if (isSlide2Active) {
+                slideMotor2.setPower(HOLDING_POWER);
+            }
         } else {
             slideMotor.setPower(power);
+            if (isSlide2Active) {
+                slideMotor2.setPower(power);
+            }
         }
         // Second motor maintains full power to follow position
     }
@@ -258,7 +291,7 @@ public class Claw {
     }
     
     public double getElbowPosition() {
-        return elbowServo.getPosition();
+        return currentElbowPosition;
     }
     
     // Setter methods for manual control
@@ -271,6 +304,74 @@ public class Claw {
     }
     
     public void setElbowPosition(double position) {
+        currentElbowPosition = position;
         elbowServo.setPosition(position);
+    }
+
+    // Add method to check if slide2 is at init position
+    public boolean isSlide2AtInitPosition() {
+        return Math.abs(slideMotor2.getCurrentPosition() - SLIDE2_MIN_POSITION) < POSITION_TOLERANCE;
+    }
+
+    // Modify startSlide2Sync to ensure proper transition from init position
+    public void startSlide2Sync() {
+        if (!isSlide2Active && !isSlide2Syncing) {
+            isSlide2Syncing = true;
+            slide2TargetPosition = Math.max(slideMotor.getCurrentPosition(), SLIDE2_MIN_POSITION);
+            slideMotor2.setPower(0);  // Ensure power is zero before mode change
+            slideMotor2.setTargetPosition(slide2TargetPosition);
+            slideMotor2.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+            slideMotor2.setPower(SLIDE_POWER);
+        }
+    }
+
+    // Add method to maintain init position
+    public void maintainSlide2InitPosition() {
+        if (!isSlide2Active && !isSlide2Syncing) {
+            if (slideMotor2.getMode() != DcMotor.RunMode.RUN_TO_POSITION) {
+                slideMotor2.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+            }
+            slideMotor2.setTargetPosition(SLIDE2_MIN_POSITION);
+            slideMotor2.setPower(SLIDE_POWER);
+        }
+    }
+
+    // Add method to check sync status
+    public boolean isSlide2Synced() {
+        if (isSlide2Syncing) {
+            int currentPosition = slideMotor2.getCurrentPosition();
+            if (Math.abs(currentPosition - slide2TargetPosition) < SYNC_TOLERANCE) {
+                isSlide2Syncing = false;
+                isSlide2Active = true;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // Add getter for slide2 state
+    public boolean isSlide2Active() {
+        return isSlide2Active;
+    }
+
+    public boolean isSlide2Syncing() {
+        return isSlide2Syncing;
+    }
+
+    // Method to gradually move elbow to target position
+    public void updateElbowPosition(double targetPosition) {
+        if (Math.abs(currentElbowPosition - targetPosition) > ELBOW_MOVE_STEP) {
+            if (currentElbowPosition < targetPosition) {
+                currentElbowPosition += ELBOW_MOVE_STEP;
+            } else {
+                currentElbowPosition -= ELBOW_MOVE_STEP;
+            }
+            elbowServo.setPosition(currentElbowPosition);
+        }
+    }
+
+    // Method to check if elbow has reached target
+    public boolean isElbowAtTarget(double targetPosition) {
+        return Math.abs(currentElbowPosition - targetPosition) <= ELBOW_MOVE_STEP;
     }
 } 
