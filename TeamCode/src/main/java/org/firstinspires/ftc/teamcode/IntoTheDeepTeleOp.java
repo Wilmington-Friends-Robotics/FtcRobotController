@@ -100,8 +100,31 @@ public class IntoTheDeepTeleOp extends OpMode {
         telemetry.addData("Front Right Power", "%.2f", mecanumDrive.getFrontRightPower());
         telemetry.addData("Back Left Power", "%.2f", mecanumDrive.getBackLeftPower());
         telemetry.addData("Back Right Power", "%.2f", mecanumDrive.getBackRightPower());
-        telemetry.update();
-        
+
+        // Handle second slide initialization and synchronization
+        if (!claw.isSlide2Active() && !claw.isSlide2Syncing()) {
+            // Maintain the initialization position until X is pressed
+            claw.maintainSlide2InitPosition();
+            telemetry.addData("Slide2", "At init position (200 ticks) - Press X to sync");
+        }
+
+        // Handle second slide synchronization
+        if (gamepad1.x && !claw.isSlide2Active() && !claw.isSlide2Syncing()) {
+            claw.startSlide2Sync();
+            telemetry.addData("Slide2", "Starting synchronization");
+        }
+
+        // Check sync status
+        if (claw.isSlide2Syncing()) {
+            if (claw.isSlide2Synced()) {
+                telemetry.addData("Slide2", "Synchronized and active");
+            } else {
+                telemetry.addData("Slide2", "Synchronizing...");
+            }
+        } else if (claw.isSlide2Active()) {
+            telemetry.addData("Slide2", "Active and mimicking primary slide");
+        }
+
         // Manual intake motor control
         if (gamepad1.dpad_up) {
             intake.forward();      // Run intake motor forward
@@ -162,24 +185,26 @@ public class IntoTheDeepTeleOp extends OpMode {
         }
         
         // Scoring sequence
-        if (gamepad1.left_trigger > 0.1 && !isInScoringSequence) {
-            isInScoringSequence = true;
-            scoringSequenceStartTime = timer.seconds();
-            // Initialize scoring position
-            claw.moveToLow();
-            claw.elbowDown();
-            claw.wristDown();
-            claw.openClaw();
-            intake.in(true);
-        }
-        
-        // Handle scoring sequence timing
-        if (isInScoringSequence) {
-            double elapsedTime = timer.seconds() - scoringSequenceStartTime;
+        if (gamepad1.left_trigger > 0.1) {
+            if (!isInScoringSequence) {
+                // Start new sequence
+                isInScoringSequence = true;
+                isWaitingToMoveHigh = false;
+                scoringSequenceStartTime = timer.seconds();
+                // Initialize scoring position
+                claw.moveToLow();
+                claw.elbowDown();  // Set elbow position directly
+                claw.wristDown();
+                claw.openClaw();
+                intake.in(true);
+                intake.raiseIntake();
+            }
             
+            // Continue sequence while trigger held
             if (claw.isAtTargetPosition()) {
                 flywheel.start(false);  // Start flywheel when in position
                 
+                double elapsedTime = timer.seconds() - scoringSequenceStartTime;
                 if (elapsedTime >= FLYWHEEL_RUN_TIME) {
                     // Complete scoring sequence
                     flywheel.stop();
@@ -191,11 +216,17 @@ public class IntoTheDeepTeleOp extends OpMode {
                         claw.moveToHigh();
                         claw.elbowForward();
                         claw.wristUp();
+                        intake.midIntake();
                         isInScoringSequence = false;
                         isWaitingToMoveHigh = false;
                     }
                 }
             }
+        } else if (isInScoringSequence) {
+            // Stop sequence if trigger released
+            flywheel.stop();
+            isInScoringSequence = false;
+            isWaitingToMoveHigh = false;
         }
         
         // Safety check for slide bottom limit
