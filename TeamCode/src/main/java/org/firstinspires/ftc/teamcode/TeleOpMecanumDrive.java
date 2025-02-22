@@ -9,9 +9,6 @@ public class TeleOpMecanumDrive extends OpMode {
     private MecanumDrive mecanumDrive;
     private JoystickController joystickController;
     private Robot robot;
-    private Intake intake;
-    private Claw claw;
-    private Flywheel flywheel;
 
     @Override
     public void init() {
@@ -22,14 +19,13 @@ public class TeleOpMecanumDrive extends OpMode {
         DcMotor backRightMotor = hardwareMap.get(DcMotor.class, "back_right");
 
         // Initialize subsystems
-        mecanumDrive = new MecanumDrive(hardwareMap, frontLeftMotor, frontRightMotor, backLeftMotor, backRightMotor, telemetry);
+        mecanumDrive = new MecanumDrive(frontLeftMotor, frontRightMotor, backLeftMotor, backRightMotor);
         joystickController = new JoystickController(gamepad1, mecanumDrive);
-        intake = new Intake(hardwareMap, "intake_slide");
-        claw = new Claw(hardwareMap);
-        flywheel = new Flywheel(hardwareMap, "flywheel");
+
+        // Initialize the complete robot
+        robot = new Robot(mecanumDrive, joystickController);
         
         telemetry.addData("Status", "Initialized");
-        telemetry.addData("Instructions", "Forward = Field Forward (relative to start)");
         telemetry.update();
     }
 

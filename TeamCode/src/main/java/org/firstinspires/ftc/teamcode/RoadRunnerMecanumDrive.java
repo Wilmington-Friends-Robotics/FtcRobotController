@@ -1,5 +1,8 @@
 package org.firstinspires.ftc.teamcode;
 
+import androidx.annotation.NonNull;
+
+import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.roadrunner.control.PIDCoefficients;
 import com.acmerobotics.roadrunner.drive.DriveSignal;
 import com.acmerobotics.roadrunner.drive.MecanumDrive;
@@ -14,173 +17,168 @@ import com.acmerobotics.roadrunner.trajectory.constraints.MinVelocityConstraint;
 import com.acmerobotics.roadrunner.trajectory.constraints.ProfileAccelerationConstraint;
 import com.acmerobotics.roadrunner.trajectory.constraints.TrajectoryAccelerationConstraint;
 import com.acmerobotics.roadrunner.trajectory.constraints.TrajectoryVelocityConstraint;
-import com.qualcomm.hardware.bosch.BNO055IMU;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.HardwareMap;
-import com.qualcomm.robotcore.hardware.PIDFCoefficients;
+import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+@Config
 public class RoadRunnerMecanumDrive extends MecanumDrive {
-    private DcMotorEx frontLeft, frontRight, backLeft, backRight;
+    // Hardware
+    private DcMotorEx leftFront, leftRear, rightRear, rightFront;
     private List<DcMotorEx> motors;
-    private BNO055IMU imu;
-    
-    public static PIDCoefficients TRANSLATIONAL_PID = new PIDCoefficients(0, 0, 0);
-    public static PIDCoefficients HEADING_PID = new PIDCoefficients(0, 0, 0);
-    
-    public static double LATERAL_MULTIPLIER = 1;
-    
-    public static double VX_WEIGHT = 1;
-    public static double VY_WEIGHT = 1;
-    public static double OMEGA_WEIGHT = 1;
-    
+    private GoBildaPinpointDriver pinpoint;
+
     private TrajectoryFollower follower;
-    
-    private List<Integer> lastEncPositions = new ArrayList<>();
-    private List<Integer> lastEncVels = new ArrayList<>();
-    
+
+    private double targetAngle = 0.0;
+    private boolean isTurning = false;
+
     public RoadRunnerMecanumDrive(HardwareMap hardwareMap) {
-        super(kV, kA, kStatic, TRACK_WIDTH, TRACK_WIDTH, LATERAL_MULTIPLIER);
-        
-        follower = new HolonomicPIDVAFollower(TRANSLATIONAL_PID, TRANSLATIONAL_PID, HEADING_PID,
-                new Pose2d(0.5, 0.5, Math.toRadians(5.0)), 0.5);
-        
+        super(DriveConstants.kV, DriveConstants.kA, DriveConstants.kStatic, DriveConstants.TRACK_WIDTH);
+
+        follower = new HolonomicPIDVAFollower(
+            new PIDCoefficients(DriveConstants.TRANSLATIONAL_PID_P, DriveConstants.TRANSLATIONAL_PID_I, DriveConstants.TRANSLATIONAL_PID_D),
+            new PIDCoefficients(DriveConstants.TRANSLATIONAL_PID_P, DriveConstants.TRANSLATIONAL_PID_I, DriveConstants.TRANSLATIONAL_PID_D),
+            new PIDCoefficients(DriveConstants.HEADING_PID_P, DriveConstants.HEADING_PID_I, DriveConstants.HEADING_PID_D),
+            new Pose2d(0.5, 0.5, Math.toRadians(5.0)), 0.5);
+
         // Initialize motors
-        frontLeft = hardwareMap.get(DcMotorEx.class, "front_left");
-        frontRight = hardwareMap.get(DcMotorEx.class, "front_right");
-        backLeft = hardwareMap.get(DcMotorEx.class, "back_left");
-        backRight = hardwareMap.get(DcMotorEx.class, "back_right");
+        leftFront = hardwareMap.get(DcMotorEx.class, "front_left");
+        leftRear = hardwareMap.get(DcMotorEx.class, "back_left");
+        rightRear = hardwareMap.get(DcMotorEx.class, "back_right");
+        rightFront = hardwareMap.get(DcMotorEx.class, "front_right");
+
+        motors = Arrays.asList(leftFront, leftRear, rightRear, rightFront);
+
+        // Initialize GoBilda Pinpoint
+        pinpoint = hardwareMap.get(GoBildaPinpointDriver.class, "odometry");
         
-        motors = Arrays.asList(frontLeft, backLeft, backRight, frontRight);
-        
+        // Configure Pinpoint settings
+        pinpoint.setOffsets(DriveConstants.X_OFFSET_MM, DriveConstants.Y_OFFSET_MM);
+        pinpoint.setEncoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_SWINGARM_POD);
+        pinpoint.setEncoderDirections(GoBildaPinpointDriver.EncoderDirection.FORWARD, GoBildaPinpointDriver.EncoderDirection.FORWARD);
+        pinpoint.resetPosAndIMU();
+
+        // Configure motor directions
+        leftFront.setDirection(DcMotor.Direction.REVERSE);
+        leftRear.setDirection(DcMotor.Direction.REVERSE);
+        rightFront.setDirection(DcMotor.Direction.FORWARD);
+        rightRear.setDirection(DcMotor.Direction.FORWARD);
+
+        // Configure motor behavior
         for (DcMotorEx motor : motors) {
             motor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+            motor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         }
-        
-        // Initialize IMU
-        imu = hardwareMap.get(BNO055IMU.class, "imu");
-        BNO055IMU.Parameters parameters = new BNO055IMU.Parameters();
-        parameters.angleUnit = BNO055IMU.AngleUnit.RADIANS;
-        imu.initialize(parameters);
     }
-    
+
     public TrajectoryBuilder trajectoryBuilder(Pose2d startPose) {
-        return new TrajectoryBuilder(startPose, VEL_CONSTRAINT, ACCEL_CONSTRAINT);
+        return new TrajectoryBuilder(startPose, getVelocityConstraint(), getAccelerationConstraint());
     }
-    
+
     public TrajectoryBuilder trajectoryBuilder(Pose2d startPose, boolean reversed) {
-        return new TrajectoryBuilder(startPose, reversed, VEL_CONSTRAINT, ACCEL_CONSTRAINT);
+        return new TrajectoryBuilder(startPose, reversed, getVelocityConstraint(), getAccelerationConstraint());
     }
-    
+
     public void followTrajectory(Trajectory trajectory) {
         follower.followTrajectory(trajectory);
     }
-    
+
     public void update() {
+        // Update Pinpoint data
+        pinpoint.update();
+        
+        // Update pose estimate using Pinpoint data
         updatePoseEstimate();
-        DriveSignal signal = follower.update(getPoseEstimate(), getPoseVelocity());
-        if (signal != null) {
-            Pose2d vel = signal.getVel();
-            setMotorPowers(
-                vel.getX() - vel.getY() - vel.getHeading(),  // frontLeft
-                vel.getX() + vel.getY() - vel.getHeading(),  // backLeft
-                vel.getX() - vel.getY() + vel.getHeading(),  // backRight
-                vel.getX() + vel.getY() + vel.getHeading()   // frontRight
-            );
+        
+        if (isTurning) {
+            // Simple proportional control for turning
+            double currentHeading = getPoseEstimate().getHeading();
+            double error = targetAngle - currentHeading;
+            
+            // Normalize the error to be within -π and π
+            while (error > Math.PI) error -= 2 * Math.PI;
+            while (error < -Math.PI) error += 2 * Math.PI;
+            
+            // Apply proportional control
+            double turnPower = error * DriveConstants.HEADING_PID_P;
+            
+            // Clip the power to prevent too fast turning
+            turnPower = Math.max(-0.7, Math.min(0.7, turnPower));
+            
+            // Stop turning if we're close enough
+            if (Math.abs(error) < Math.toRadians(1.0)) {
+                setMotorPowers(0, 0, 0, 0);
+                isTurning = false;
+            } else {
+                setMotorPowers(-turnPower, -turnPower, turnPower, turnPower);
+            }
+        } else {
+            // Normal trajectory following
+            DriveSignal signal = follower.update(getPoseEstimate(), getPoseVelocity());
+            if (signal != null) setDriveSignal(signal);
         }
     }
-    
-    @Override
-    public void setDriveSignal(DriveSignal driveSignal) {
-        setMotorPowers(driveSignal.getVel().getX(),
-                driveSignal.getVel().getY(),
-                driveSignal.getVel().getHeading(),
-                driveSignal.getVel().getHeading());
-    }
-    
+
     @Override
     public void setMotorPowers(double v, double v1, double v2, double v3) {
-        frontLeft.setPower(v);
-        backLeft.setPower(v1);
-        backRight.setPower(v2);
-        frontRight.setPower(v3);
+        leftFront.setPower(v);
+        leftRear.setPower(v1);
+        rightRear.setPower(v2);
+        rightFront.setPower(v3);
     }
-    
+
     @Override
     public double getRawExternalHeading() {
-        return imu.getAngularOrientation().firstAngle;
+        return pinpoint.getHeading();
     }
-    
+
+    @NonNull
     @Override
     public List<Double> getWheelPositions() {
-        List<Double> wheelPositions = new ArrayList<>();
-        for (DcMotorEx motor : motors) {
-            wheelPositions.add(encoderTicksToInches(motor.getCurrentPosition()));
-        }
-        return wheelPositions;
+        // Convert Pinpoint's millimeter readings to inches for RoadRunner
+        double xPos = pinpoint.getPosX() / 25.4; // mm to inches
+        double yPos = pinpoint.getPosY() / 25.4; // mm to inches
+        return Arrays.asList(xPos, yPos);
     }
-    
+
+    @NonNull
     @Override
     public List<Double> getWheelVelocities() {
-        List<Double> wheelVelocities = new ArrayList<>();
-        for (DcMotorEx motor : motors) {
-            wheelVelocities.add(encoderTicksToInches(motor.getVelocity()));
-        }
-        return wheelVelocities;
+        // Convert Pinpoint's mm/s readings to inches/s for RoadRunner
+        double xVel = pinpoint.getVelX() / 25.4; // mm/s to inches/s
+        double yVel = pinpoint.getVelY() / 25.4; // mm/s to inches/s
+        return Arrays.asList(xVel, yVel);
     }
-    
-    public static double encoderTicksToInches(double ticks) {
-        return WHEEL_RADIUS * 2 * Math.PI * GEAR_RATIO * ticks / TICKS_PER_REV;
+
+    public static TrajectoryVelocityConstraint getVelocityConstraint() {
+        return new MinVelocityConstraint(Arrays.asList(
+            new AngularVelocityConstraint(DriveConstants.MAX_ANG_VEL),
+            new MecanumVelocityConstraint(DriveConstants.MAX_VEL, DriveConstants.TRACK_WIDTH)
+        ));
     }
-    
-    public boolean isBusy() {
-        return follower.isFollowing();
+
+    public static TrajectoryAccelerationConstraint getAccelerationConstraint() {
+        return new ProfileAccelerationConstraint(DriveConstants.MAX_ACCEL);
     }
-    
+
     public void turn(double angle) {
-        double error = angle - getRawExternalHeading();
-        Pose2d startPose = getPoseEstimate();
-        startPose = new Pose2d(startPose.getX(), startPose.getY(), angle);
-        
-        Trajectory trajectory = trajectoryBuilder(startPose)
-                .lineToLinearHeading(new Pose2d(startPose.getX(), startPose.getY(), angle))
-                .build();
-        
-        followTrajectory(trajectory);
+        targetAngle = angle;
+        isTurning = true;
     }
-    
-    // Constants
-    public static double WHEEL_RADIUS = 2.0; // in
-    public static double GEAR_RATIO = 1.0; // output (wheel) speed / input (encoder) speed
-    public static double TRACK_WIDTH = 1.0; // in
-    public static double WHEEL_BASE = 1.0; // in
-    
-    public static double TICKS_PER_REV = 1.0;
-    
-    public static double MAX_VEL = 30;
-    public static double MAX_ACCEL = 30;
-    public static double MAX_ANG_VEL = Math.toRadians(180);
-    public static double MAX_ANG_ACCEL = Math.toRadians(180);
-    
-    public static double kV = 1.0 / rpmToVelocity(getMaxRpm());
-    public static double kA = 0;
-    public static double kStatic = 0;
-    
-    private static double getMaxRpm() {
-        return 0; // Replace with actual max RPM
+
+    public void turnAsync(double angle) {
+        turn(angle);
     }
-    
-    private static double rpmToVelocity(double rpm) {
-        return rpm * GEAR_RATIO * 2 * Math.PI * WHEEL_RADIUS / 60.0;
+
+    public boolean isBusy() {
+        return follower.isFollowing() || isTurning;
     }
-    
-    private static TrajectoryVelocityConstraint VEL_CONSTRAINT = new MinVelocityConstraint(Arrays.asList(
-            new AngularVelocityConstraint(MAX_ANG_VEL),
-            new MecanumVelocityConstraint(MAX_VEL, TRACK_WIDTH)
-    ));
-    private static TrajectoryAccelerationConstraint ACCEL_CONSTRAINT = new ProfileAccelerationConstraint(MAX_ACCEL);
 } 
