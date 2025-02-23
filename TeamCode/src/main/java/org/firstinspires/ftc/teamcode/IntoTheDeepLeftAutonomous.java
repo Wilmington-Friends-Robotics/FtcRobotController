@@ -114,6 +114,54 @@ public class IntoTheDeepLeftAutonomous extends LinearOpMode {
                 telemetry.update();
             }
 
+            mecanumDrive.drive(0.6, 0, 0);
+
+            while (opModeIsActive() && runtime.seconds() < 5.7) {
+                telemetry.addData("Time", "%.2f", runtime.seconds());
+                telemetry.addData("Slide Position", claw.getCurrentPosition());
+                telemetry.update();
+            }
+
+            mecanumDrive.drive(0, 0.6, 0);
+
+            while (opModeIsActive() && runtime.seconds() < 6) {
+                telemetry.addData("Time", "%.2f", runtime.seconds());
+                telemetry.addData("Slide Position", claw.getCurrentPosition());
+                telemetry.update();
+            }
+
+            mecanumDrive.drive(-0.6, 0, 0);
+
+            while (opModeIsActive() && runtime.seconds() < 6) {
+                telemetry.addData("Time", "%.2f", runtime.seconds());
+                telemetry.addData("Slide Position", claw.getCurrentPosition());
+                telemetry.update();
+            }
+
+            mecanumDrive.drive(0.6, 0, 0);
+
+            while (opModeIsActive() && runtime.seconds() < 6) {
+                telemetry.addData("Time", "%.2f", runtime.seconds());
+                telemetry.addData("Slide Position", claw.getCurrentPosition());
+                telemetry.update();
+            }
+
+            mecanumDrive.drive(0, 0.6, 0);
+
+            while (opModeIsActive() && runtime.seconds() < 6) {
+                telemetry.addData("Time", "%.2f", runtime.seconds());
+                telemetry.addData("Slide Position", claw.getCurrentPosition());
+                telemetry.update();
+            }
+
+            mecanumDrive.drive(-0.6, 0, 0);
+
+            while (opModeIsActive() && runtime.seconds() < 6) {
+                telemetry.addData("Time", "%.2f", runtime.seconds());
+                telemetry.addData("Slide Position", claw.getCurrentPosition());
+                telemetry.update();
+            }
+
             // Stop the robot
             mecanumDrive.drive(0, 0, 0);
 
