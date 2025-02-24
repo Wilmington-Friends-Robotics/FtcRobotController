@@ -44,6 +44,9 @@ public class IntoTheDeepTeleOp extends OpMode {
     private static final double CLAW_CLOSE_WAIT_TIME = 0.7; // Time to wait after closing claw
     private int rightTriggerSequence = 0;          // Tracks the right trigger sequence stage
     private boolean rightTriggerPressed = false;   // Tracks if right trigger was previously pressed
+    private boolean halfPowerMode = false;         // Tracks if we're in half power mode
+    private boolean xButtonPressed = false;        // Tracks if X button was previously pressed
+    private boolean started = false;
     
     // Hardware devices for manual control
     private DcMotorEx slideMotor;      // Vertical slide motor
@@ -83,17 +86,30 @@ public class IntoTheDeepTeleOp extends OpMode {
         // Initialize robot controller
         robot = new Robot(mecanumDrive, joystickController);
         
-        // Initial robot setup - move to starting position
-        claw.moveToGround();  // Move slide to ground position
-        claw.elbowUp();       // Raise elbow
-        //intake.in();          // Retract intake
-        
         telemetry.addData("Status", "Initialized - Moving to ground position and retracting intake");
         telemetry.update();
     }
 
     @Override
     public void loop() {
+        if (!started) {
+            // Initial robot setup - move to starting position
+            claw.moveToGround();  // Move slide to ground position
+            claw.elbowUp();       // Raise elbow
+            intake.in(false);          // Retract intake
+            started = true;
+        }
+
+        // Handle power mode toggle with X button
+        if (gamepad1.x) {
+            if (!xButtonPressed) {  // Only toggle when the button is first pressed
+                joystickController.togglePowerMode();
+                xButtonPressed = true;
+            }
+        } else {
+            xButtonPressed = false;  // Reset when button is released
+        }
+
         // Update drive controls from joystick input
         joystickController.update();
         
@@ -118,6 +134,7 @@ public class IntoTheDeepTeleOp extends OpMode {
         // Slide to low position sequence
         if (gamepad1.right_bumper) {
             claw.moveToLow();
+            claw.elbowSample();
         }
 
         if (gamepad1.b) {
@@ -146,9 +163,10 @@ public class IntoTheDeepTeleOp extends OpMode {
                 if (rightTriggerSequence == 0) {
                     claw.closeClaw();
                     rightTriggerSequence = 1;
-                } else if (rightTriggerSequence == 1) {
+                } else if (rightTriggerSequence > 0) {
                     claw.moveToMedium();
                     mecanumDrive.drive(-1, 0, 0);
+                    rightTriggerSequence = 2;
                 }
                 rightTriggerPressed = true;
             }
@@ -156,61 +174,37 @@ public class IntoTheDeepTeleOp extends OpMode {
             rightTriggerPressed = false;  // Reset when trigger is released
         }
         
-        // Scoring sequence
-        if (gamepad1.left_trigger > 0.1 && !isInScoringSequence) {
-            isInScoringSequence = true;
-            scoringSequenceStartTime = timer.seconds();
-            // Initialize scoring position
-            claw.moveToLow();
-            claw.elbowDown();
-            claw.wristDown();
-            claw.openClaw();
-            intake.in(true);
-            intake.raiseIntake();
+        // Check if we need to move the elbow after slide reaches position
+        if (rightTriggerSequence == 2 && claw.isAtTargetPosition()) {
+            claw.elbowSample();
+            rightTriggerSequence = 3;  // Move to next sequence to prevent repeated calls
         }
         
-        // Handle scoring sequence timing
-        if (isInScoringSequence) {
-            double elapsedTime = timer.seconds() - scoringSequenceStartTime;
-            
-            if (claw.isAtTargetPosition()) {
-                // Start flywheel when in position
-                flywheel.start(false);  // Run flywheel in reverse
-                if (!flywheelScoring) {
-                    flywheelScoring = true;
-                    flywheelScoringStartTime = elapsedTime;
-                }
-                
-                if (elapsedTime - flywheelScoringStartTime >= FLYWHEEL_RUN_TIME) {
-                    // Stop flywheel and close claw
-                    flywheel.stop();
-                    if (!isWaitingToMoveHigh) {
-                        claw.closeClaw();
-                        clawCloseTime = timer.seconds();
-                        isWaitingToMoveHigh = true;
-                    } else if (timer.seconds() - clawCloseTime >= CLAW_CLOSE_WAIT_TIME) {
-                        claw.moveToHigh();
-                        claw.elbowForward();
-                        claw.wristUp();
-                        intake.midIntake();
-                        isInScoringSequence = false;
-                        isWaitingToMoveHigh = false;
-                        flywheelScoring = false;
-                    }
-                }
+        // Scoring sequence
+        if (gamepad1.left_trigger > 0.1) {
+            // Ensure we're in position control mode
+            if (claw.getCurrentMode() != DcMotor.RunMode.RUN_TO_POSITION) {
+                claw.setRunMode(DcMotor.RunMode.RUN_TO_POSITION);
             }
+            
+            // Calculate new target position - move down faster with harder trigger press
+            int currentPos = claw.getCurrentPosition();
+            int newTarget = currentPos + (int)(-100 * gamepad1.left_trigger); // Decrease by 20 ticks * trigger value
+            claw.moveToPosition(newTarget);
         }
         
         // Safety check for slide bottom limit
         claw.checkLimitSwitch();
         
         // Update debug information
+        telemetry.addData("Drive Mode", joystickController.isHalfPowerMode() ? "Half Power" : "Full Power");
         telemetry.addData("Slide Position", claw.getCurrentPosition());
         telemetry.addData("Slide Power", "%.2f", currentSlidePower);
         telemetry.addData("Limit Switch", limitSwitch.isPressed() ? "PRESSED" : "NOT PRESSED");
         telemetry.addData("Right Trigger Sequence", rightTriggerSequence == 0 ? "Ready to Close" : 
                                                   rightTriggerSequence == 1 ? "Ready to Raise" : 
-                                                  "Sequence Complete");
+                                                  rightTriggerSequence == 2 ? "Ready to Move Medium" : 
+                                                  rightTriggerSequence == 3 ? "Sequence Complete" : "Invalid Sequence");
         telemetry.update();
     }
 }

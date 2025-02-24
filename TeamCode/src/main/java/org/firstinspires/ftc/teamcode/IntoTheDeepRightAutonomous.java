@@ -74,89 +74,25 @@ public class IntoTheDeepRightAutonomous extends LinearOpMode {
             claw.elbowUp();
             claw.moveToGround();
 
+            mecanumDrive.drive(0, 0, 0);
+
+            while (opModeIsActive() && runtime.seconds() < 5) {
+                telemetry.addData("Time", "%.2f", runtime.seconds());
+                telemetry.addData("Slide Position", claw.getCurrentPosition());
+                telemetry.update();
+            }
+
             mecanumDrive.drive(-0.45, 0, 0);
 
-            while (opModeIsActive() && runtime.seconds() < 1.8) {
+            while (opModeIsActive() && runtime.seconds() < 5.8) {
                 telemetry.addData("Time", "%.2f", runtime.seconds());
                 telemetry.addData("Slide Position", claw.getCurrentPosition());
                 telemetry.update();
             }
 
-            mecanumDrive.drive(0, -0.9, 0);
+            mecanumDrive.drive(0, -0.5, 0);
 
-            while (opModeIsActive() && runtime.seconds() < 2.5) {
-                telemetry.addData("Time", "%.2f", runtime.seconds());
-                telemetry.addData("Slide Position", claw.getCurrentPosition());
-                telemetry.update();
-            }
-
-            mecanumDrive.drive(0.7, 0, 0);
-
-            while (opModeIsActive() && runtime.seconds() < 3.3) {
-                telemetry.addData("Time", "%.2f", runtime.seconds());
-                telemetry.addData("Slide Position", claw.getCurrentPosition());
-                telemetry.update();
-            }
-
-            mecanumDrive.drive(0, -0.6, 0);
-
-            while (opModeIsActive() && runtime.seconds() < 3.7) {
-                telemetry.addData("Time", "%.2f", runtime.seconds());
-                telemetry.addData("Slide Position", claw.getCurrentPosition());
-                telemetry.update();
-            }
-
-            mecanumDrive.drive(-0.6, 0, 0);
-
-            while (opModeIsActive() && runtime.seconds() < 4.7) {
-                telemetry.addData("Time", "%.2f", runtime.seconds());
-                telemetry.addData("Slide Position", claw.getCurrentPosition());
-                telemetry.update();
-            }
-            
-            mecanumDrive.drive(0.6, 0, 0);
-
-            while (opModeIsActive() && runtime.seconds() < 5.7) {
-                telemetry.addData("Time", "%.2f", runtime.seconds());
-                telemetry.addData("Slide Position", claw.getCurrentPosition());
-                telemetry.update();
-            }
-
-            mecanumDrive.drive(0, -0.6, 0);
-
-            while (opModeIsActive() && runtime.seconds() < 6) {
-                telemetry.addData("Time", "%.2f", runtime.seconds());
-                telemetry.addData("Slide Position", claw.getCurrentPosition());
-                telemetry.update();
-            }
-
-            mecanumDrive.drive(-0.6, 0, 0);
-
-            while (opModeIsActive() && runtime.seconds() < 6) {
-                telemetry.addData("Time", "%.2f", runtime.seconds());
-                telemetry.addData("Slide Position", claw.getCurrentPosition());
-                telemetry.update();
-            }
-
-            mecanumDrive.drive(0.6, 0, 0);
-
-            while (opModeIsActive() && runtime.seconds() < 6) {
-                telemetry.addData("Time", "%.2f", runtime.seconds());
-                telemetry.addData("Slide Position", claw.getCurrentPosition());
-                telemetry.update();
-            }
-
-            mecanumDrive.drive(0, -0.6, 0);
-
-            while (opModeIsActive() && runtime.seconds() < 6) {
-                telemetry.addData("Time", "%.2f", runtime.seconds());
-                telemetry.addData("Slide Position", claw.getCurrentPosition());
-                telemetry.update();
-            }
-
-            mecanumDrive.drive(-0.6, 0, 0);
-
-            while (opModeIsActive() && runtime.seconds() < 6) {
+            while (opModeIsActive() && runtime.seconds() < 7.3) {
                 telemetry.addData("Time", "%.2f", runtime.seconds());
                 telemetry.addData("Slide Position", claw.getCurrentPosition());
                 telemetry.update();

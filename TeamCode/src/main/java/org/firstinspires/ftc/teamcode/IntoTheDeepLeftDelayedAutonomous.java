@@ -5,8 +5,8 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
-@Autonomous(name = "IntoTheDeepLeftAutonomous", group = "Competition")
-public class IntoTheDeepLeftAutonomous extends LinearOpMode {
+@Autonomous(name = "IntoTheDeepLeftDelayedAutonomous", group = "Competition")
+public class IntoTheDeepLeftDelayedAutonomous extends LinearOpMode {
     private MecanumDrive mecanumDrive;
     private Claw claw;
     private ElapsedTime runtime = new ElapsedTime();
@@ -47,7 +47,7 @@ public class IntoTheDeepLeftAutonomous extends LinearOpMode {
             mecanumDrive.drive(0.45, 0, -0.01);
             
             // Keep running for 0.7 seconds
-            while (opModeIsActive() && runtime.seconds() < 0.95) {
+            while (opModeIsActive() && runtime.seconds() < 20.95) {
                 telemetry.addData("Time", "%.2f", runtime.seconds());
                 telemetry.addData("Slide Position", claw.getCurrentPosition());
                 telemetry.update();
@@ -56,7 +56,7 @@ public class IntoTheDeepLeftAutonomous extends LinearOpMode {
             // Stop the robot
             mecanumDrive.drive(0, 0, 0);
 
-            while (opModeIsActive() && runtime.seconds() < 0.12) {
+            while (opModeIsActive() && runtime.seconds() < 20.12) {
                 telemetry.addData("Time", "%.2f", runtime.seconds());
                 telemetry.addData("Slide Position", claw.getCurrentPosition());
                 telemetry.update();
@@ -64,7 +64,7 @@ public class IntoTheDeepLeftAutonomous extends LinearOpMode {
             
             claw.moveToLow();
 
-            while (opModeIsActive() && runtime.seconds() < 1.5) {
+            while (opModeIsActive() && runtime.seconds() < 21.5) {
                 telemetry.addData("Time", "%.2f", runtime.seconds());
                 telemetry.addData("Slide Position", claw.getCurrentPosition());
                 telemetry.update();
@@ -76,7 +76,7 @@ public class IntoTheDeepLeftAutonomous extends LinearOpMode {
 
             mecanumDrive.drive(-0.45, 0, 0);
 
-            while (opModeIsActive() && runtime.seconds() < 2.3) {
+            while (opModeIsActive() && runtime.seconds() < 22.3) {
                 telemetry.addData("Time", "%.2f", runtime.seconds());
                 telemetry.addData("Slide Position", claw.getCurrentPosition());
                 telemetry.update();

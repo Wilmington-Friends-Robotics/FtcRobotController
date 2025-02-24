@@ -17,14 +17,15 @@ public class Claw {
     private static final double CLAW_CLOSED = 0.7;
     private static final double WRIST_UP = 0.2;
     private static final double WRIST_DOWN = 0.55;
-    private static final double ELBOW_UP = 0.8;      // Fully raised position
-    private static final double ELBOW_FORWARD = 0.5;  // Horizontal position
-    private static final double ELBOW_DOWN = 0.0;     // Fully lowered position
+    private static final double ELBOW_UP = 0.95;      // Fully raised position
+    private static final double ELBOW_FORWARD = 0.65;  // Horizontal position
+    private static final double ELBOW_SAMPLE = 0.55;
+    private static final double ELBOW_DOWN = 0.25;     // Fully lowered position
     
     // Slide positions (in encoder ticks)
     private static final int SLIDE_GROUND = 0;
     private static final int SLIDE_LOW = 780;
-    private static final int SLIDE_MEDIUM = 1350;
+    private static final int SLIDE_MEDIUM = 1800;
     private static final int SLIDE_HIGH = 3000;
     
     // Slide movement parameters
@@ -99,6 +100,10 @@ public class Claw {
     public void elbowForward() {
         elbowServo.setPosition(ELBOW_FORWARD);
     }
+
+    public void elbowSample() {
+        elbowServo.setPosition(ELBOW_SAMPLE);
+    }
     
     public void elbowDown() {
         elbowServo.setPosition(ELBOW_DOWN);
@@ -164,6 +169,16 @@ public class Claw {
         } else {
             slideMotor.setPower(power);
         }
+    }
+    
+    // Get current motor mode
+    public DcMotor.RunMode getCurrentMode() {
+        return slideMotor.getMode();
+    }
+    
+    // Set motor run mode
+    public void setRunMode(DcMotor.RunMode mode) {
+        slideMotor.setMode(mode);
     }
     
     // Get current slide position

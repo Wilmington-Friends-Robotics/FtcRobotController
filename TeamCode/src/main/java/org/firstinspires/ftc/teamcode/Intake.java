@@ -16,12 +16,18 @@ public class Intake {
     private static final double SERVO_MID_POSITION = 0.4;  // Servo position for intake mid
     private static final double SERVO_DOWN_POSITION = 1.0;  // Servo position for intake down (180 degrees)
     private static final double MOTOR_RUN_TIME_MS = 500;  // Time to run motor in milliseconds
+    private static final int MIN_POSITION = -1500;  // Minimum allowed encoder position
     
     public Intake(HardwareMap hardwareMap, String motorName) {
         intakeMotor = hardwareMap.get(DcMotor.class, motorName);
         intakeServo = hardwareMap.get(Servo.class, "intake_wrist");
         flywheel = new Flywheel(hardwareMap, "flywheel");
         timer = new ElapsedTime();
+        
+        // Configure motor
+        intakeMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        intakeMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        
         stop(); // Initialize in stopped position
         midIntake(); // Start with intake raised
         isOut = false; // Initialize state as in
@@ -29,10 +35,14 @@ public class Intake {
     
     // Move the intake forwards
     public void forward() {
-        intakeMotor.setPower(-INTAKE_POWER);
+        if (intakeMotor.getCurrentPosition() > MIN_POSITION) {
+            intakeMotor.setPower(-INTAKE_POWER);
+        } else {
+            stop(); // Stop if we hit the minimum limit
+        }
     }
     
-    // Move the intake backwards
+    // Move the intake backwards with position limit check
     public void backward() {
         intakeMotor.setPower(INTAKE_POWER);
     }
@@ -120,9 +130,24 @@ public class Intake {
                 timer.reset();
                 lastPosition = currentPosition;
             }
+            
+            // Check minimum position limit
+            if (currentPosition <= MIN_POSITION) {
+                stop();
+                break;
+            }
         }
         
-        // Stop the motor once no movement is detected
+        // Stop the motor once no movement is detected or limit reached
         stop();
+        
+        // Reset encoder to 0 after stopping
+        intakeMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        intakeMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+    }
+    
+    // Get current position
+    public int getCurrentPosition() {
+        return intakeMotor.getCurrentPosition();
     }
 } 
