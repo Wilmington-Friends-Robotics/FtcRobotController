@@ -12,6 +12,8 @@ public class DriveConstants {
     // GoBilda Pinpoint odometry constants (in millimeters)
     public static final double X_OFFSET_MM = -84.0; // Left of center is positive
     public static final double Y_OFFSET_MM = -168.0; // Forward of center is positive
+    public static double PINPOINT_TICKS_PER_MM = 19.6291096416; // Calibrated
+    public static double PINPOINT_YAW_SCALAR = 1.0;
 
     // These are example values you need to tune
     public static PIDFCoefficients MOTOR_VELO_PID = new PIDFCoefficients(0, 0, 0, getMotorVelocityF());

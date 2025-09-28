@@ -9,7 +9,6 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 @TeleOp(name = "OutreachDiscBotTeleOp", group = "TeleOp")
 public class OutreachDiscBotTeleOp extends OpMode {
 	// Two motors per side driving a belt that powers three wheels per side
-	private DcMotorEx leftMotorA;
 	private DcMotorEx leftMotorB;
 	private DcMotorEx rightMotorA;
 	private DcMotorEx rightMotorB;
@@ -31,19 +30,16 @@ public class OutreachDiscBotTeleOp extends OpMode {
 	@Override
 	public void init() {
 		// Map motors (rename to match your configuration names in the RC app)
-		leftMotorA = hardwareMap.get(DcMotorEx.class, "left_motor_a");
 		leftMotorB = hardwareMap.get(DcMotorEx.class, "left_motor_b");
 		rightMotorA = hardwareMap.get(DcMotorEx.class, "right_motor_a");
 		rightMotorB = hardwareMap.get(DcMotorEx.class, "right_motor_b");
 		flywheel = hardwareMap.get(DcMotorEx.class, "flywheel");
 
 		// Recommended motor setup for tank drive
-		leftMotorA.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 		leftMotorB.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 		rightMotorA.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 		rightMotorB.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
-		leftMotorA.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 		leftMotorB.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 		rightMotorA.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 		rightMotorB.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
@@ -55,7 +51,6 @@ public class OutreachDiscBotTeleOp extends OpMode {
 		flywheel.setPower(0);
 
 		// Reverse one side so forward power makes robot move forward
-		leftMotorA.setDirection(DcMotor.Direction.FORWARD);
 		leftMotorB.setDirection(DcMotor.Direction.FORWARD);
 		rightMotorA.setDirection(DcMotor.Direction.REVERSE);
 		rightMotorB.setDirection(DcMotor.Direction.REVERSE);
@@ -143,7 +138,6 @@ public class OutreachDiscBotTeleOp extends OpMode {
 	}
 
 	private void setLeftPower(double power) {
-		leftMotorA.setPower(power);
 		leftMotorB.setPower(power);
 	}
 

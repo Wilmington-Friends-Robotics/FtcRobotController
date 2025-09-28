@@ -1,0 +1,60 @@
+# Change Rule
+Whenever code changes are made, run the project build immediately; if it fails, fix the issues and rebuild until it succeeds.
+
+# Pinpoint Localizer Integration Plan
+
+## Step 1: Baseline Assessment
+- Goal: Document current drive and autonomous control structure, focusing on how op modes access drivetrain and localization.
+- Actions: Review existing `RoadRunnerMecanumDrive`, `IntoTheDeep*` op modes, and command scheduling patterns; identify where localization data is consumed today.
+- Validation: Summarize findings in project notes and confirm no build errors after running the standard Gradle build (`./gradlew build`).
+
+## Step 2: Localizer Wiring
+- Goal: Instantiate `PinpointFieldLocalizer` wherever robot hardware is initialized.
+- Actions: Update the base robot container or each op mode’s init block to create the localizer, call `setPoseEstimate` with the chosen start pose, and ensure the `update()` loop runs each iteration.
+- Validation: Build succeeds; telemetry during a dry-run (robot on blocks) shows coherent pose values updating with manual movement.
+
+## Step 3: Pinpoint Calibration Workflow
+- Goal: Calibrate pod wheel scale and heading scalar so Pinpoint distance/heading outputs match field reality.
+- Actions: Add reusable calibration helpers plus an interactive op mode that guides teams through forward, strafe, and heading calibration trials while auto-computing updated encoder resolution and yaw scalar values.
+- Validation: Run the calibration op mode, follow on-screen prompts, and confirm the reported scale factors keep drive distance errors under 2% on a verification pass.
+
+### Step 3 Findings (2025-09-28)
+- Forward and strafe calibration trials converged on 1.48× the stock swingarm ticks/mm, yielding a working value of 19.6291 ticks/mm.
+- Heading calibration required no adjustment (yaw scalar remains 1.0).
+
+## Step 4: Pose Broadcasting
+- Goal: Make the current pose accessible to any task/state machine component.
+- Actions: Introduce a shared `RobotState` or similar singleton that exposes the pose from `PinpointFieldLocalizer`; refactor existing consumers to read from this source instead of disparate fields.
+- Validation: Unit or component smoke test passes (if available), and telemetry reflects identical pose data before and after the refactor.
+
+## Step 5: Task Definition API
+- Goal: Define a data structure representing field waypoints and associated actions.
+- Actions: Create task objects (e.g., `DriveToPoseTask`) that store target positions, tolerances, and completion callbacks; ensure they consume the shared pose and drive system references.
+- Validation: Build succeeds; write a quick test op mode that queues a single waypoint and confirm the robot begins driving toward the target while reporting progress via telemetry.
+
+## Step 6: State Machine Infrastructure
+- Goal: Implement a task scheduler/state machine able to step through queued tasks sequentially.
+- Actions: Build a simple state machine loop (e.g., `TaskController`) that updates the active task, advances on completion, and handles interrupts such as stop requests.
+- Validation: Simulated run (robot disabled motors) shows state transitions in telemetry, and Gradle build remains green.
+
+## Step 7: Multi-Waypoint Execution
+- Goal: Demonstrate driving through multiple waypoints using the new system.
+- Actions: Extend the test op mode to queue several poses with diverse headings; integrate velocity constraints or drive power adjustments as needed.
+- Validation: Field test confirms the robot approximately reaches each waypoint within tolerance; capture logs/telemetry as evidence.
+
+## Step 8: Error Handling & Recovery
+- Goal: Add safeguards for localization loss or task failure.
+- Actions: Detect `PinpointFieldLocalizer` fault statuses, implement retry or abort behavior, and surface alerts to telemetry.
+- Validation: Induce a simulated fault (e.g., unplug pod) and verify the system halts tasks and reports the issue while a rebuild continues to pass.
+
+## Step 9: Documentation & Training
+- Goal: Ensure the team can maintain and extend the system.
+- Actions: Document setup steps, usage patterns, and tuning guidelines; create a checklist for initializing the localizer before matches.
+- Validation: Peer review of documentation plus a walkthrough with another team member confirming understanding.
+
+### Step 1 Findings (2025-09-28)
+- `IntoTheDeep*` autonomous routines rely purely on timed `MecanumDrive.drive()` calls; no localization feedback loop yet.
+- TeleOp also drives via `MecanumDrive` constructed from raw motors, with no field-centric state accessible beyond motor encoders.
+- `RoadRunnerMecanumDrive` already wires the `GoBildaPinpointDriver` and exposes Road Runner pose/velocity, but current op modes do not instantiate it.
+- Legacy `Odometry` class manually reads I2C registers; prefer the packaged `GoBildaPinpointDriver`/`PinpointFieldLocalizer` instead of extending this path.
+- No shared robot container manages subsystem singletons, so each op mode builds components ad hoc—will need a central place to host the field localizer.

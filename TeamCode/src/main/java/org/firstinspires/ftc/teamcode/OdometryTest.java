@@ -14,8 +14,9 @@ public class OdometryTest extends LinearOpMode {
         // Initialize and configure Pinpoint
         pinpoint = hardwareMap.get(GoBildaPinpointDriver.class, "odometry");
         pinpoint.setOffsets(DriveConstants.X_OFFSET_MM, DriveConstants.Y_OFFSET_MM);
-        pinpoint.setEncoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_SWINGARM_POD);
+        pinpoint.setEncoderResolution(DriveConstants.PINPOINT_TICKS_PER_MM);
         pinpoint.setEncoderDirections(GoBildaPinpointDriver.EncoderDirection.FORWARD, GoBildaPinpointDriver.EncoderDirection.FORWARD);
+        pinpoint.setYawScalar(DriveConstants.PINPOINT_YAW_SCALAR);
         pinpoint.resetPosAndIMU();
 
         RoadRunnerMecanumDrive drive = new RoadRunnerMecanumDrive(hardwareMap);
