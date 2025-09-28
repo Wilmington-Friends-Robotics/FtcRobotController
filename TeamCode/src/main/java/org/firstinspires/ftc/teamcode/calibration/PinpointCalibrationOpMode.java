@@ -293,9 +293,11 @@ public class PinpointCalibrationOpMode extends LinearOpMode {
             backRightPower /= maxPower;
         }
 
-        frontLeft.setPower(frontLeftPower);
-        frontRight.setPower(-frontRightPower);
-        backLeft.setPower(backLeftPower);
-        backRight.setPower(-backRightPower);
+        double scale = 0.5; // run at half speed to make calibration easier
+
+        frontLeft.setPower(frontLeftPower * scale);
+        frontRight.setPower(-frontRightPower * scale);
+        backLeft.setPower(backLeftPower * scale);
+        backRight.setPower(-backRightPower * scale);
     }
 }
