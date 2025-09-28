@@ -1,6 +1,10 @@
 # Change Rule
 Whenever code changes are made, run the project build immediately; if it fails, fix the issues and rebuild until it succeeds.
 
+# Team Context
+- This code is only to be used by our FTC team
+- Legacy op modes from previous seasons are for reference only—new TeleOp and autonomous routines will be authored specifically for this field-localized system.
+
 # Pinpoint Localizer Integration Plan
 
 ## Step 1: Baseline Assessment
@@ -12,6 +16,10 @@ Whenever code changes are made, run the project build immediately; if it fails, 
 - Goal: Instantiate `PinpointFieldLocalizer` wherever robot hardware is initialized.
 - Actions: Update the base robot container or each op mode’s init block to create the localizer, call `setPoseEstimate` with the chosen start pose, and ensure the `update()` loop runs each iteration.
 - Validation: Build succeeds; telemetry during a dry-run (robot on blocks) shows coherent pose values updating with manual movement.
+
+### Step 2 Findings (2025-09-28)
+- Added `FieldRobot` to centralize drivetrain hardware and a single `PinpointFieldLocalizer` instance, plus `FieldLinearOpMode` so every new TeleOp/Auto automatically updates the localizer each loop.
+- Gradle build verified the new scaffolding; next dry-run will confirm telemetry behaves as expected once the new op modes are written.
 
 ## Step 3: Pinpoint Calibration Workflow
 - Goal: Calibrate pod wheel scale and heading scalar so Pinpoint distance/heading outputs match field reality.
@@ -42,12 +50,17 @@ Whenever code changes are made, run the project build immediately; if it fails, 
 - Actions: Extend the test op mode to queue several poses with diverse headings; integrate velocity constraints or drive power adjustments as needed.
 - Validation: Field test confirms the robot approximately reaches each waypoint within tolerance; capture logs/telemetry as evidence.
 
-## Step 8: Error Handling & Recovery
+## Step 8: Field-Centric Op Modes
+- Goal: Deliver the new TeleOp and autonomous op modes built on `FieldLinearOpMode` with localization-aware driving logic.
+- Actions: Implement fresh TeleOp/Auto classes that extend the new base, integrate reusable subsystems, and expose pose telemetry for driver feedback.
+- Validation: Dry-run both op modes on blocks to confirm controls, pose updates, and subsystem behaviors before on-field testing.
+
+## Step 9: Error Handling & Recovery
 - Goal: Add safeguards for localization loss or task failure.
 - Actions: Detect `PinpointFieldLocalizer` fault statuses, implement retry or abort behavior, and surface alerts to telemetry.
 - Validation: Induce a simulated fault (e.g., unplug pod) and verify the system halts tasks and reports the issue while a rebuild continues to pass.
 
-## Step 9: Documentation & Training
+## Step 10: Documentation & Training
 - Goal: Ensure the team can maintain and extend the system.
 - Actions: Document setup steps, usage patterns, and tuning guidelines; create a checklist for initializing the localizer before matches.
 - Validation: Peer review of documentation plus a walkthrough with another team member confirming understanding.
