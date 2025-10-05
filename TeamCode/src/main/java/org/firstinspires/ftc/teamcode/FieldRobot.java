@@ -11,6 +11,7 @@ public class FieldRobot {
     private final HardwareMap hardwareMap;
     private final MecanumDrive mecanumDrive;
     private final PinpointFieldLocalizer fieldLocalizer;
+    private final RobotState robotState = RobotState.getInstance();
 
     public FieldRobot(HardwareMap hardwareMap) {
         this(hardwareMap, new Pose2d());
@@ -25,6 +26,7 @@ public class FieldRobot {
 
         mecanumDrive = new MecanumDrive(frontLeft, frontRight, backLeft, backRight);
         fieldLocalizer = new PinpointFieldLocalizer(hardwareMap, startPose);
+        robotState.setPose(startPose);
     }
 
     public HardwareMap getHardwareMap() {
@@ -41,9 +43,11 @@ public class FieldRobot {
 
     public void resetPose(Pose2d pose) {
         fieldLocalizer.resetAndSetPose(pose);
+        robotState.setPose(pose);
     }
 
     public void update() {
         fieldLocalizer.update();
+        robotState.updateFrom(fieldLocalizer);
     }
 }

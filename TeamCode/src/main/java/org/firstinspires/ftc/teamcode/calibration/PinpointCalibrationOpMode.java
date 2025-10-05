@@ -5,6 +5,7 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 
+import org.firstinspires.ftc.teamcode.DriveConstants;
 import org.firstinspires.ftc.teamcode.PinpointFieldLocalizer;
 import org.firstinspires.ftc.teamcode.calibration.PinpointCalibrationHelper.Axis;
 import org.firstinspires.ftc.teamcode.calibration.PinpointCalibrationHelper.DistanceCalibrationResult;
@@ -16,7 +17,8 @@ public class PinpointCalibrationOpMode extends LinearOpMode {
     private enum Mode {
         FORWARD_DISTANCE,
         STRAFE_DISTANCE,
-        HEADING
+        HEADING,
+        ROTATION_OFFSETS
     }
 
     private static final double MM_PER_INCH = 25.4;
@@ -56,6 +58,8 @@ public class PinpointCalibrationOpMode extends LinearOpMode {
         Sample startSample = null;
         DistanceCalibrationResult lastDistanceResult = null;
         HeadingCalibrationResult lastHeadingResult = null;
+        PinpointCalibrationHelper.OffsetCalibrationResult lastOffsetResult = null;
+        PinpointCalibrationHelper.OffsetAccumulator offsetAccumulator = null;
         boolean startCaptured = false;
         boolean justApplied = false;
 
@@ -64,11 +68,11 @@ public class PinpointCalibrationOpMode extends LinearOpMode {
             mode = adjustMode(mode);
             if (mode == Mode.HEADING) {
                 headingIndex = adjustIndex(headingIndex, HEADING_CHOICES_DEGREES.length);
-            } else {
+            } else if (mode != Mode.ROTATION_OFFSETS) {
                 distanceIndex = adjustIndex(distanceIndex, DISTANCE_CHOICES_INCHES.length);
             }
             telemetryLoop(localizer, mode, distanceIndex, headingIndex,
-                startCaptured, lastDistanceResult, lastHeadingResult, justApplied);
+                startCaptured, lastDistanceResult, lastHeadingResult, lastOffsetResult, offsetAccumulator, justApplied);
             sleep(40);
         }
 
@@ -82,8 +86,19 @@ public class PinpointCalibrationOpMode extends LinearOpMode {
             mode = adjustMode(mode);
             if (mode == Mode.HEADING) {
                 headingIndex = adjustIndex(headingIndex, HEADING_CHOICES_DEGREES.length);
-            } else {
+            } else if (mode != Mode.ROTATION_OFFSETS) {
                 distanceIndex = adjustIndex(distanceIndex, DISTANCE_CHOICES_INCHES.length);
+            }
+
+            PinpointCalibrationHelper.Sample rotationSample = null;
+            if (startCaptured && mode == Mode.ROTATION_OFFSETS) {
+                if (offsetAccumulator == null && startSample != null) {
+                    offsetAccumulator = helper.createOffsetAccumulator(startSample);
+                }
+                if (offsetAccumulator != null) {
+                    rotationSample = helper.captureSample();
+                    helper.accumulateOffsetSample(offsetAccumulator, rotationSample);
+                }
             }
 
             if (gamepad1.start) {
@@ -92,6 +107,8 @@ public class PinpointCalibrationOpMode extends LinearOpMode {
                     startSample = null;
                     lastDistanceResult = null;
                     lastHeadingResult = null;
+                    lastOffsetResult = null;
+                    offsetAccumulator = null;
                     startCaptured = false;
                     justApplied = false;
                     startLatch = true;
@@ -106,6 +123,12 @@ public class PinpointCalibrationOpMode extends LinearOpMode {
                     startCaptured = true;
                     lastDistanceResult = null;
                     lastHeadingResult = null;
+                    lastOffsetResult = null;
+                    if (mode == Mode.ROTATION_OFFSETS) {
+                        offsetAccumulator = helper.createOffsetAccumulator(startSample);
+                    } else {
+                        offsetAccumulator = null;
+                    }
                     aLatch = true;
                 }
             } else {
@@ -114,16 +137,33 @@ public class PinpointCalibrationOpMode extends LinearOpMode {
 
             if (gamepad1.b && startCaptured) {
                 if (!bLatch) {
-                    Sample endSample = helper.captureSample();
-                    if (mode == Mode.HEADING) {
-                        double expectedTurnRad = Math.toRadians(HEADING_CHOICES_DEGREES[headingIndex]);
-                        lastHeadingResult = helper.computeHeadingResult(startSample, endSample, expectedTurnRad);
+                    if (mode == Mode.ROTATION_OFFSETS) {
+                        if (offsetAccumulator != null) {
+                            if (rotationSample == null) {
+                                rotationSample = helper.captureSample();
+                                helper.accumulateOffsetSample(offsetAccumulator, rotationSample);
+                            }
+                            lastOffsetResult = helper.computeOffsetResult(offsetAccumulator);
+                        } else {
+                            lastOffsetResult = null;
+                        }
                         lastDistanceResult = null;
-                    } else {
-                        double expectedDistanceMm = DISTANCE_CHOICES_INCHES[distanceIndex] * MM_PER_INCH;
-                        Axis axis = mode == Mode.FORWARD_DISTANCE ? Axis.FORWARD : Axis.STRAFE;
-                        lastDistanceResult = helper.computeDistanceResult(axis, startSample, endSample, expectedDistanceMm);
                         lastHeadingResult = null;
+                        offsetAccumulator = null;
+                    } else {
+                        Sample endSample = helper.captureSample();
+                        if (mode == Mode.HEADING) {
+                            double expectedTurnRad = Math.toRadians(HEADING_CHOICES_DEGREES[headingIndex]);
+                            lastHeadingResult = helper.computeHeadingResult(startSample, endSample, expectedTurnRad);
+                            lastDistanceResult = null;
+                            lastOffsetResult = null;
+                        } else {
+                            double expectedDistanceMm = DISTANCE_CHOICES_INCHES[distanceIndex] * MM_PER_INCH;
+                            Axis axis = mode == Mode.FORWARD_DISTANCE ? Axis.FORWARD : Axis.STRAFE;
+                            lastDistanceResult = helper.computeDistanceResult(axis, startSample, endSample, expectedDistanceMm);
+                            lastHeadingResult = null;
+                            lastOffsetResult = null;
+                        }
                     }
                     startSample = null;
                     startCaptured = false;
@@ -141,6 +181,11 @@ public class PinpointCalibrationOpMode extends LinearOpMode {
                     } else if (lastHeadingResult != null) {
                         helper.applyHeadingCalibration(lastHeadingResult);
                         justApplied = true;
+                    } else if (lastOffsetResult != null) {
+                        helper.applyOffsetCalibration(lastOffsetResult);
+                        DriveConstants.X_OFFSET_MM = lastOffsetResult.suggestedXOffsetMm;
+                        DriveConstants.Y_OFFSET_MM = lastOffsetResult.suggestedYOffsetMm;
+                        justApplied = true;
                     }
                     xLatch = true;
                 }
@@ -154,6 +199,8 @@ public class PinpointCalibrationOpMode extends LinearOpMode {
                     startCaptured = false;
                     lastDistanceResult = null;
                     lastHeadingResult = null;
+                    lastOffsetResult = null;
+                    offsetAccumulator = null;
                     yLatch = true;
                 }
             } else {
@@ -166,7 +213,7 @@ public class PinpointCalibrationOpMode extends LinearOpMode {
             driveMecanum(frontLeftMotor, frontRightMotor, backLeftMotor, backRightMotor, forward, strafe, rotate);
 
             telemetryLoop(localizer, mode, distanceIndex, headingIndex,
-                startCaptured, lastDistanceResult, lastHeadingResult, justApplied);
+                startCaptured, lastDistanceResult, lastHeadingResult, lastOffsetResult, offsetAccumulator, justApplied);
             idle();
         }
     }
@@ -222,7 +269,10 @@ public class PinpointCalibrationOpMode extends LinearOpMode {
 
     private void telemetryLoop(PinpointFieldLocalizer localizer, Mode mode, int distanceIndex, int headingIndex,
                                boolean startCaptured, DistanceCalibrationResult distanceResult,
-                               HeadingCalibrationResult headingResult, boolean justApplied) {
+                               HeadingCalibrationResult headingResult,
+                               PinpointCalibrationHelper.OffsetCalibrationResult offsetResult,
+                               PinpointCalibrationHelper.OffsetAccumulator offsetAccumulator,
+                               boolean justApplied) {
         telemetry.addData("Mode", modeName(mode));
         telemetry.addData("Pose (in)", "x: %.2f y: %.2f h: %.1f",
             localizer.getPoseEstimate().getX(),
@@ -231,14 +281,28 @@ public class PinpointCalibrationOpMode extends LinearOpMode {
 
         if (mode == Mode.HEADING) {
             telemetry.addData("Target Turn", "%.0f deg", HEADING_CHOICES_DEGREES[headingIndex]);
-        } else {
+        } else if (mode != Mode.ROTATION_OFFSETS) {
             telemetry.addData("Target Distance", "%.0f in", DISTANCE_CHOICES_INCHES[distanceIndex]);
         }
 
-        if (!startCaptured && distanceResult == null && headingResult == null) {
-            telemetry.addLine("Press A to capture start pose, drive, then press B to capture end pose.");
+        if (!startCaptured && distanceResult == null && headingResult == null && offsetResult == null) {
+            if (mode == Mode.ROTATION_OFFSETS) {
+                telemetry.addLine("Press A, rotate in place (>=90°), then press B to record offsets.");
+            } else {
+                telemetry.addLine("Press A to capture start pose, move, then press B to capture end pose.");
+            }
         } else if (startCaptured) {
-            telemetry.addLine("Drive carefully to the field mark, then press B.");
+            if (mode == Mode.ROTATION_OFFSETS) {
+                telemetry.addLine("Rotate in place, then press B.");
+                if (offsetAccumulator != null) {
+                    telemetry.addData("Accum Heading", "%.1f deg",
+                        Math.toDegrees(offsetAccumulator.getAccumulatedHeadingRad()));
+                    telemetry.addData("Accum ΔX", "%.2f mm", offsetAccumulator.getAccumulatedXmm());
+                    telemetry.addData("Accum ΔY", "%.2f mm", offsetAccumulator.getAccumulatedYmm());
+                }
+            } else {
+                telemetry.addLine("Drive carefully to the field mark, then press B.");
+            }
         }
 
         if (distanceResult != null) {
@@ -258,6 +322,15 @@ public class PinpointCalibrationOpMode extends LinearOpMode {
             telemetry.addLine("Press X to apply, Y to reset for another run.");
         }
 
+        if (offsetResult != null) {
+            telemetry.addData("Heading Change", "%.1f deg", Math.toDegrees(offsetResult.headingDeltaRad));
+            telemetry.addData("Measured ΔX", "%.2f mm", offsetResult.measuredDeltaXmm);
+            telemetry.addData("Measured ΔY", "%.2f mm", offsetResult.measuredDeltaYmm);
+            telemetry.addData("Suggested X Offset", "%.2f mm", offsetResult.suggestedXOffsetMm);
+            telemetry.addData("Suggested Y Offset", "%.2f mm", offsetResult.suggestedYOffsetMm);
+            telemetry.addLine("Press X to apply offsets, Y to reset for another run.");
+        }
+
         if (justApplied) {
             telemetry.addLine("New calibration value sent to Pinpoint.");
         }
@@ -272,6 +345,8 @@ public class PinpointCalibrationOpMode extends LinearOpMode {
                 return "Strafe Distance";
             case HEADING:
                 return "Heading";
+            case ROTATION_OFFSETS:
+                return "Rotation Offsets";
             default:
                 return "Forward Distance";
         }

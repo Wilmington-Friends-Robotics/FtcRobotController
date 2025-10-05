@@ -68,6 +68,77 @@ public class PinpointCalibrationHelper {
         }
     }
 
+    public static class OffsetCalibrationResult {
+        public final double headingDeltaRad;
+        public final double measuredDeltaXmm;
+        public final double measuredDeltaYmm;
+        public final double suggestedXOffsetMm;
+        public final double suggestedYOffsetMm;
+
+        private OffsetCalibrationResult(double headingDeltaRad, double measuredDeltaXmm, double measuredDeltaYmm,
+                                        double suggestedXOffsetMm, double suggestedYOffsetMm) {
+            this.headingDeltaRad = headingDeltaRad;
+            this.measuredDeltaXmm = measuredDeltaXmm;
+            this.measuredDeltaYmm = measuredDeltaYmm;
+            this.suggestedXOffsetMm = suggestedXOffsetMm;
+            this.suggestedYOffsetMm = suggestedYOffsetMm;
+        }
+    }
+
+    public static class OffsetAccumulator {
+        private Sample lastSample;
+        private double totalHeading;
+        private double totalX;
+        private double totalY;
+
+        private OffsetAccumulator(Sample start) {
+            reset(start);
+        }
+
+        private void reset(Sample start) {
+            lastSample = start;
+            totalHeading = 0;
+            totalX = 0;
+            totalY = 0;
+        }
+
+        private void addSample(Sample sample) {
+            if (lastSample == null) {
+                lastSample = sample;
+                return;
+            }
+            double dHeading = normalizeDelta(sample.headingRad - lastSample.headingRad);
+            double dX = sample.xMm - lastSample.xMm;
+            double dY = sample.yMm - lastSample.yMm;
+
+            totalHeading += dHeading;
+            totalX += dX;
+            totalY += dY;
+            lastSample = sample;
+        }
+
+        private OffsetCalibrationResult toResult() {
+            if (Math.abs(totalHeading) < Math.toRadians(20)) {
+                return new OffsetCalibrationResult(totalHeading, totalX, totalY, Double.NaN, Double.NaN);
+            }
+            double xOffset = totalY / totalHeading;
+            double yOffset = -totalX / totalHeading;
+            return new OffsetCalibrationResult(totalHeading, totalX, totalY, xOffset, yOffset);
+        }
+
+        public double getAccumulatedHeadingRad() {
+            return totalHeading;
+        }
+
+        public double getAccumulatedXmm() {
+            return totalX;
+        }
+
+        public double getAccumulatedYmm() {
+            return totalY;
+        }
+    }
+
     private final PinpointFieldLocalizer localizer;
 
     public PinpointCalibrationHelper(PinpointFieldLocalizer localizer) {
@@ -112,6 +183,23 @@ public class PinpointCalibrationHelper {
         return new HeadingCalibrationResult(expectedTurnRad, measuredTurn, suggestedYawScalar, errorDegrees);
     }
 
+    public OffsetAccumulator createOffsetAccumulator(Sample start) {
+        return new OffsetAccumulator(start);
+    }
+
+    public void accumulateOffsetSample(OffsetAccumulator accumulator, Sample sample) {
+        if (accumulator != null) {
+            accumulator.addSample(sample);
+        }
+    }
+
+    public OffsetCalibrationResult computeOffsetResult(OffsetAccumulator accumulator) {
+        if (accumulator == null) {
+            return new OffsetCalibrationResult(0, 0, 0, Double.NaN, Double.NaN);
+        }
+        return accumulator.toResult();
+    }
+
     public void applyDistanceCalibration(DistanceCalibrationResult result) {
         if (!Double.isNaN(result.suggestedTicksPerMm) && result.suggestedTicksPerMm > 0) {
             localizer.setEncoderResolution(result.suggestedTicksPerMm);
@@ -124,7 +212,13 @@ public class PinpointCalibrationHelper {
         }
     }
 
-    private double normalizeDelta(double delta) {
+    public void applyOffsetCalibration(OffsetCalibrationResult result) {
+        if (!Double.isNaN(result.suggestedXOffsetMm) && !Double.isNaN(result.suggestedYOffsetMm)) {
+            localizer.setOffsets(result.suggestedXOffsetMm, result.suggestedYOffsetMm);
+        }
+    }
+
+    private static double normalizeDelta(double delta) {
         while (delta > Math.PI) {
             delta -= 2 * Math.PI;
         }

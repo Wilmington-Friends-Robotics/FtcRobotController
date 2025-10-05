@@ -45,6 +45,7 @@ public class RoadRunnerMecanumDrive extends MecanumDrive {
 
         follower = new HolonomicPIDVAFollower(
             new PIDCoefficients(DriveConstants.TRANSLATIONAL_PID_P, DriveConstants.TRANSLATIONAL_PID_I, DriveConstants.TRANSLATIONAL_PID_D),
+            
             new PIDCoefficients(DriveConstants.TRANSLATIONAL_PID_P, DriveConstants.TRANSLATIONAL_PID_I, DriveConstants.TRANSLATIONAL_PID_D),
             new PIDCoefficients(DriveConstants.HEADING_PID_P, DriveConstants.HEADING_PID_I, DriveConstants.HEADING_PID_D),
             new Pose2d(0.5, 0.5, Math.toRadians(5.0)), 0.5);
@@ -63,7 +64,7 @@ public class RoadRunnerMecanumDrive extends MecanumDrive {
         // Configure Pinpoint settings
         pinpoint.setOffsets(DriveConstants.X_OFFSET_MM, DriveConstants.Y_OFFSET_MM);
         pinpoint.setEncoderResolution(DriveConstants.PINPOINT_TICKS_PER_MM);
-        pinpoint.setEncoderDirections(GoBildaPinpointDriver.EncoderDirection.FORWARD, GoBildaPinpointDriver.EncoderDirection.FORWARD);
+        pinpoint.setEncoderDirections(DriveConstants.PINPOINT_X_DIRECTION, DriveConstants.PINPOINT_Y_DIRECTION);
         pinpoint.setYawScalar(DriveConstants.PINPOINT_YAW_SCALAR);
         pinpoint.resetPosAndIMU();
 

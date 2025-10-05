@@ -29,11 +29,18 @@ Whenever code changes are made, run the project build immediately; if it fails, 
 ### Step 3 Findings (2025-09-28)
 - Forward and strafe calibration trials converged on 1.48× the stock swingarm ticks/mm, yielding a working value of 19.6291 ticks/mm.
 - Heading calibration required no adjustment (yaw scalar remains 1.0).
+- Added rotation-offset calibration mode to compute pod offsets so the robot doesn’t drift in X/Y during pure spins; helper can now push the suggested offsets directly to the localizer and `DriveConstants`.
 
 ## Step 4: Pose Broadcasting
 - Goal: Make the current pose accessible to any task/state machine component.
 - Actions: Introduce a shared `RobotState` or similar singleton that exposes the pose from `PinpointFieldLocalizer`; refactor existing consumers to read from this source instead of disparate fields.
 - Validation: Unit or component smoke test passes (if available), and telemetry reflects identical pose data before and after the refactor.
+
+### Step 4 Findings (2025-09-28)
+- Added `RobotState` singleton to mirror Pinpoint pose/velocity, wired into `FieldRobot.update()` so every loop refreshes the shared data.
+- Created `Field Drive` TeleOp on top of `FieldLinearOpMode`, driving with the existing mecanum helper while broadcasting pose/velocity telemetry from `RobotState`.
+- Full Gradle build succeeded; next step is to validate telemetry on-hardware during a dry run.
+- Added a low-speed deadband in `RobotState` so when translational velocity is near zero, sub-3 mm residual ripple from rotations is suppressed while normal compound movements remain unaffected.
 
 ## Step 5: Task Definition API
 - Goal: Define a data structure representing field waypoints and associated actions.
