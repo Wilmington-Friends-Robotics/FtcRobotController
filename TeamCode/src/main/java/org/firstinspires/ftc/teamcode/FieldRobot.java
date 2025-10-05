@@ -41,6 +41,10 @@ public class FieldRobot {
         return fieldLocalizer;
     }
 
+    public RobotState getRobotState() {
+        return robotState;
+    }
+
     public void resetPose(Pose2d pose) {
         fieldLocalizer.resetAndSetPose(pose);
         robotState.setPose(pose);
