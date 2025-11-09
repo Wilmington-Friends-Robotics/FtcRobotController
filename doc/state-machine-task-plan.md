@@ -64,6 +64,7 @@ Whenever code changes are made, run the project build immediately; if it fails, 
 - Goal: Demonstrate driving through multiple waypoints using the new system.
 - Actions: Extend the test op mode to queue several poses with diverse headings; integrate velocity constraints or drive power adjustments as needed.
 - Validation: Field test confirms the robot approximately reaches each waypoint within tolerance; capture logs/telemetry as evidence.
+- Subtask: Add a PID-based `DriveToPoseTask` that uses odometry to drive to a field-relative target, and exercise it inside the sample task op mode for indoor validation before field testing.
 
 ## Step 8: Field-Centric Op Modes
 - Goal: Deliver the new TeleOp and autonomous op modes built on `FieldLinearOpMode` with localization-aware driving logic.

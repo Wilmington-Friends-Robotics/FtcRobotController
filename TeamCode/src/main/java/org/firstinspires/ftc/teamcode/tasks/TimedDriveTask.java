@@ -21,18 +21,18 @@ public class TimedDriveTask implements RobotTask {
 
     @Override
     public void start(FieldRobot robot, RobotState state) {
-        robot.getDrive().drive(0, 0, 0);
+        robot.drive(0, 0, 0);
     }
 
     @Override
     public boolean update(FieldRobot robot, RobotState state, double elapsedSeconds) {
-        robot.getDrive().drive(forward, strafe, rotate);
+        robot.drive(forward, strafe, rotate);
         return elapsedSeconds >= durationSec;
     }
 
     @Override
     public void stop(FieldRobot robot, RobotState state) {
-        robot.getDrive().drive(0, 0, 0);
+        robot.drive(0, 0, 0);
     }
 
     @Override

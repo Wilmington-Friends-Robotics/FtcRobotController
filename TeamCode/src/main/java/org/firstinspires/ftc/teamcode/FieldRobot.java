@@ -37,6 +37,10 @@ public class FieldRobot {
         return mecanumDrive;
     }
 
+    public void drive(double forward, double strafe, double rotate) {
+        mecanumDrive.drive(forward, strafe, rotate);
+    }
+
     public PinpointFieldLocalizer getFieldLocalizer() {
         return fieldLocalizer;
     }
