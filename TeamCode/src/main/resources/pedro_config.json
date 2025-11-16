@@ -1,0 +1,45 @@
+{
+  "metadata": {
+    "source": "doc/odometry-measurements.md",
+    "description": "Baseline Pedro Pathing constants for the odometry testing chassis (two-wheel + Pinpoint IMU)",
+    "last_updated_utc": "2025-11-16T18:51:06Z"
+  },
+  "chassis": {
+    "length_in": 17.0,
+    "width_in": 10.38
+  },
+  "deadwheel": {
+    "diameter_mm": 32.0,
+    "radius_in": 0.629921,
+    "circumference_in": 3.957912,
+    "encoder_cpr": 2000,
+    "ticks_per_inch": 505.316944,
+    "ticks_per_mm": 19.894368
+  },
+  "forward_pod": {
+    "longitudinal_offset_in_forward_positive": -3.75,
+    "lateral_offset_in_left_positive": 1.9,
+    "delta_direction": "forward_positive",
+    "notes": "Wheel reports positive ticks when robot moves forward."
+  },
+  "lateral_pod": {
+    "longitudinal_offset_in_forward_positive": -4.625,
+    "lateral_offset_in_left_positive": -0.44,
+    "delta_direction": "right_positive",
+    "notes": "Wheel reports positive ticks when robot moves right."
+  },
+  "pinpoint": {
+    "i2c_name": "odometry",
+    "uses_internal_imu_heading": true
+  },
+  "drive": {
+    "track_width_in": 10.38,
+    "wheelbase_in": 17.0
+  },
+  "pedro_defaults": {
+    "max_velocity_ips": 40.0,
+    "max_accel_ips2": 40.0,
+    "max_angular_velocity_rps": 3.14,
+    "max_angular_accel_rps2": 3.14
+  }
+}

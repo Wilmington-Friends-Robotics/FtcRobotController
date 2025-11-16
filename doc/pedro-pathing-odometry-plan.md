@@ -19,7 +19,7 @@ The goal is to stand up a reliable odometry/localization stack based on the goBI
 ## 2. Pedro Pathing Library Setup
 4. **Add Pedro Pathing to the Gradle build.**
    - Overview: Declare the Pedro dependency (or module) inside `build.dependencies.gradle` and sync so its classes are available to `TeamCode`.
-   - Deliverables: Updated Gradle files, dependency lock updates if applicable, synced project.
+   - Deliverables: Updated `build.dependencies.gradle` pointing at `com.pedropathing:ftc:2.0.1`, Gradle/AGP toolchain bumped to Gradle 8.0.2 + Android Gradle Plugin 8.1.4 (plus `android.nonTransitiveRClass=false` and `android.suppressUnsupportedCompileSdk=29` for legacy FTC resources), dependency lock updates if applicable, synced project.
    - Verification: Execute `./gradlew build` to ensure the dependency resolves and the codebase still compiles.
 5. **Store Pedro configuration data in resources.**
    - Overview: Create the JSON (or YAML) config that Pedro expects, containing wheel radius, track width, lateral distance, and tuning scalars so autonomous and TeleOp share the same source of truth.
