@@ -7,13 +7,28 @@ Robot: odometry testing chassis
 - Width: 10.38 in
 
 ## Longitudinal Tracking Wheel (forward/back)
-- From front edge: 4.50 in back
-- Longitudinal offset to robot center: 4.00 in forward
-- From left edge: 2.85 in inboard
-- Lateral offset to robot center: 2.34 in left
+- From back edge: 4.75 in
+- Longitudinal offset to robot center: 3.75 in backward
+- From left edge: 3.2 in
+- Lateral offset to robot center: 1.9 in leftward
+- Forward = positive delta, backward = negative delta
 
 ## Lateral Tracking Wheel (strafe)
-- From front edge: 2.81 in back
-- Longitudinal offset to robot center: 5.69 in forward
-- From right edge: 2.10 in inboard
-- Lateral offset to robot center: 3.09 in right
+- From back edge: 3.875 in
+- Longitudinal offset to robot center: 4.625 in backward
+- From right edge: 4.75 in
+- Lateral offset to robot center: 0.44 in right
+- Right = positive delta, left = negative delta
+
+## Both Wheels:
+- Diameter: 32mm
+- CPR: 2000
+
+## Control Hub Devices:
+Motors:
+- Bus 0: goBILDA 5203 series "front_right"
+- Bus 1: goBILDA 5203 series "front_left"
+- Bus 2: goBILDA 5203 series "back_right"
+- Bus 3: goBILDA 5203 series "back_left"
+IC2:
+- Bus 0: goBILDA Pinpoint Odometry Computer "odometry"
