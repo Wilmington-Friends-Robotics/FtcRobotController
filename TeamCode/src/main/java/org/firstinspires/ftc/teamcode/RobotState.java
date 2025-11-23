@@ -15,6 +15,7 @@ public class RobotState {
     private Pose2d poseInches = new Pose2d();
     private Pose2d velocityInches = new Pose2d();
     private Pose2D poseMillimeters = new Pose2D(DistanceUnit.MM, 0, 0, AngleUnit.RADIANS, 0);
+    private double headingVelocityRadPerSec = 0.0;
 
     private static final double VELOCITY_DEADBAND_IN_PER_SEC = 0.5; // ≈12.7 mm/s
     private static final double POSITION_DEADBAND_IN = 0.12; // ≈3 mm
@@ -35,12 +36,30 @@ public class RobotState {
 
         poseInches = new Pose2d(filteredX, filteredY, rawPose.getHeading());
         velocityInches = rawVelocity;
+        headingVelocityRadPerSec = rawVelocity.getHeading();
         poseMillimeters = new Pose2D(
             DistanceUnit.MM,
             poseInches.getX() * 25.4,
             poseInches.getY() * 25.4,
             AngleUnit.RADIANS,
             poseInches.getHeading()
+        );
+    }
+
+    /** Convenience overload for tests or simulated feeds without a localizer instance. */
+    public synchronized void updateFrom(Pose2d rawPose, Pose2d rawVelocity) {
+        double filteredX = applyDeadband(rawPose.getX(), rawVelocity.getX());
+        double filteredY = applyDeadband(rawPose.getY(), rawVelocity.getY());
+
+        poseInches = new Pose2d(filteredX, filteredY, rawPose.getHeading());
+        velocityInches = rawVelocity;
+        headingVelocityRadPerSec = rawVelocity.getHeading();
+        poseMillimeters = new Pose2D(
+                DistanceUnit.MM,
+                poseInches.getX() * 25.4,
+                poseInches.getY() * 25.4,
+                AngleUnit.RADIANS,
+                poseInches.getHeading()
         );
     }
 
@@ -59,6 +78,14 @@ public class RobotState {
 
     public synchronized Pose2d getVelocityInches() {
         return velocityInches;
+    }
+
+    public synchronized double getHeadingRadians() {
+        return poseInches.getHeading();
+    }
+
+    public synchronized double getHeadingVelocityRadPerSec() {
+        return headingVelocityRadPerSec;
     }
 
     public synchronized Pose2D getPoseMillimeters() {
