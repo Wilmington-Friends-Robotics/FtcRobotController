@@ -5,6 +5,7 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
+import org.firstinspires.ftc.teamcode.config.PedroConfig;
 
 /**
  * Utility that wraps the goBILDA Pinpoint odometry computer so the robot always has a field-centric pose estimate.
@@ -20,23 +21,29 @@ public class PinpointFieldLocalizer {
     private GoBildaPinpointDriver.DeviceStatus lastStatus = GoBildaPinpointDriver.DeviceStatus.NOT_READY;
 
     public PinpointFieldLocalizer(HardwareMap hardwareMap) {
-        this(hardwareMap, "odometry", new Pose2d());
+        this(hardwareMap, PedroConfig.getInstance(), new Pose2d());
     }
 
     public PinpointFieldLocalizer(HardwareMap hardwareMap, Pose2d startPoseInches) {
-        this(hardwareMap, "odometry", startPoseInches);
+        this(hardwareMap, PedroConfig.getInstance(), startPoseInches);
     }
 
-    public PinpointFieldLocalizer(HardwareMap hardwareMap, String deviceName, Pose2d startPoseInches) {
-        pinpoint = hardwareMap.get(GoBildaPinpointDriver.class, deviceName);
-        pinpoint.setOffsets(DriveConstants.X_OFFSET_MM, DriveConstants.Y_OFFSET_MM);
-        pinpoint.setEncoderResolution(DriveConstants.PINPOINT_TICKS_PER_MM);
+    public PinpointFieldLocalizer(HardwareMap hardwareMap, PedroConfig config, Pose2d startPoseInches) {
+        pinpoint = hardwareMap.get(GoBildaPinpointDriver.class, config.getPinpoint().getI2cName());
+
+        // Configure from pedro_config.json
+        // Pinpoint expects X offset for the forward pod (positive = left of center)
+        // and Y offset for the lateral pod (positive = forward of center).
+        double forwardPodOffsetMm = inchesToMm(config.getForwardPod().getLateralOffsetInLeftPositive());
+        double lateralPodOffsetMm = inchesToMm(config.getLateralPod().getLongitudinalOffsetInForwardPositive());
+        pinpoint.setOffsets((float) forwardPodOffsetMm, (float) lateralPodOffsetMm);
+        pinpoint.setEncoderResolution(config.getDeadwheel().getTicksPerMm());
         pinpoint.setEncoderDirections(
-            DriveConstants.PINPOINT_X_DIRECTION,
-            DriveConstants.PINPOINT_Y_DIRECTION
+                mapDirectionX(config.getForwardPod().getDeltaDirection()),
+                mapDirectionY(config.getLateralPod().getDeltaDirection())
         );
-        pinpoint.setYawScalar(DriveConstants.PINPOINT_YAW_SCALAR);
-        setPoseEstimate(startPoseInches);
+        pinpoint.setYawScalar(1.0f);
+        resetAndSetPose(startPoseInches);
     }
 
     public void update() {
@@ -139,5 +146,23 @@ public class PinpointFieldLocalizer {
 
     private static double inchesToMm(double inches) {
         return inches * MM_PER_INCH;
+    }
+
+    // X pod should increase when moving forward
+    private static GoBildaPinpointDriver.EncoderDirection mapDirectionX(String descriptor) {
+        if (descriptor == null) return GoBildaPinpointDriver.EncoderDirection.FORWARD;
+        String key = descriptor.toLowerCase();
+        if (key.contains("forward")) return GoBildaPinpointDriver.EncoderDirection.FORWARD;
+        if (key.contains("back") || key.contains("reverse")) return GoBildaPinpointDriver.EncoderDirection.REVERSED;
+        return GoBildaPinpointDriver.EncoderDirection.FORWARD;
+    }
+
+    // Y pod should increase when moving left
+    private static GoBildaPinpointDriver.EncoderDirection mapDirectionY(String descriptor) {
+        if (descriptor == null) return GoBildaPinpointDriver.EncoderDirection.FORWARD;
+        String key = descriptor.toLowerCase();
+        if (key.contains("left")) return GoBildaPinpointDriver.EncoderDirection.FORWARD;
+        if (key.contains("right")) return GoBildaPinpointDriver.EncoderDirection.REVERSED;
+        return GoBildaPinpointDriver.EncoderDirection.FORWARD;
     }
 }

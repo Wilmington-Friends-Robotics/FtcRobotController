@@ -31,7 +31,7 @@ public class PedroConfigTest {
         assertTrue(forwardPod.getLongitudinalOffsetInForwardPositive() < 0);
 
         PedroConfig.Pod lateralPod = config.getLateralPod();
-        assertTrue(lateralPod.getLateralOffsetInLeftPositive() < 1);
+        assertTrue(lateralPod.getLateralOffsetInLeftPositive() > 0);
 
         PedroConfig.Pinpoint pinpoint = config.getPinpoint();
         assertEquals("odometry", pinpoint.getI2cName());

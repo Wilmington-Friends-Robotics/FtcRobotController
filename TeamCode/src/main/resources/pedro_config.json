@@ -17,14 +17,14 @@
     "ticks_per_mm": 19.894368
   },
   "forward_pod": {
-    "longitudinal_offset_in_forward_positive": -3.75,
+    "longitudinal_offset_in_forward_positive": -7.0625,
     "lateral_offset_in_left_positive": 1.9,
     "delta_direction": "forward_positive",
     "notes": "Wheel reports positive ticks when robot moves forward."
   },
   "lateral_pod": {
     "longitudinal_offset_in_forward_positive": -4.625,
-    "lateral_offset_in_left_positive": -0.44,
+    "lateral_offset_in_left_positive": 3.15,
     "delta_direction": "right_positive",
     "notes": "Wheel reports positive ticks when robot moves right."
   },
