@@ -46,8 +46,8 @@ The goal is to stand up a reliable odometry/localization stack based on the goBI
 
 ## 4. Pedro Pathing Drive Integration
 10. **Instantiate Pedro’s drive class with the external localizer.**
-    - Overview: Configure `MecanumDrive` (or equivalent) so it pulls poses from `PinpointLocalizer` instead of internal encoder odometry, aligning Pedro with the hardware truth source.
-    - Deliverables: New drive builder/factory code that wires the localizer and Pedro tuning constants together.
+    - Overview: Configure Pedro’s follower to read pose from the Pinpoint-based localizer and map drive outputs into your drivetrain so Pedro owns localization and motor commands.
+    - Deliverables: New Pedro follower factory that wires the Pinpoint localizer and drivetrain motor names/directions together.
     - Verification: Create an integration test (or bench-mode OpMode) that prints both Pedro and Pinpoint poses to ensure they match; run `./gradlew build` once code changes are complete.
 11. **Map Pedro drive signals to motor power outputs.**
     - Overview: Adapt the Pedro `DriveSignal` into the existing `RoadRunnerMecanumDrive` or another drivetrain class so follower outputs actually drive the hardware.

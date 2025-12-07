@@ -1,8 +1,9 @@
 package org.firstinspires.ftc.teamcode;
 
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 
-class MecanumDrive {
+public class MecanumDrive {
     // Getter methods to access motor positions
     public int getFrontLeftPosition() {
         return frontLeft.getCurrentPosition();
@@ -75,10 +76,19 @@ class MecanumDrive {
 
         // Set power to each motor without changing signs.
         frontLeft.setPower(frontLeftPower);
-        frontRight.setPower(-frontRightPower);
+        frontRight.setPower(frontRightPower);
         backLeft.setPower(backLeftPower);
-        backRight.setPower(-backRightPower);
+        backRight.setPower(backRightPower);
         System.out.println(String.format("Drive command - FrontLeft: %2.2f, FrontRight: %2.2f, BackLeft: %2.2f, BackRight: %2.2f", frontLeftPower, frontRightPower, backLeftPower, backRightPower));
+    }
+
+    /** Helper to apply direction reversals consistently. */
+    public void setMotorDirections(DcMotorSimple.Direction flDir, DcMotorSimple.Direction frDir,
+                                   DcMotorSimple.Direction blDir, DcMotorSimple.Direction brDir) {
+        frontLeft.setDirection(flDir);
+        frontRight.setDirection(frDir);
+        backLeft.setDirection(blDir);
+        backRight.setDirection(brDir);
     }
 
     // Method to reset encoders and set motors to the desired mode
