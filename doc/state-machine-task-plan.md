@@ -47,15 +47,24 @@ Whenever code changes are made, run the project build immediately; if it fails, 
 - Actions: Create task objects (e.g., `DriveToPoseTask`) that store target positions, tolerances, and completion callbacks; ensure they consume the shared pose and drive system references.
 - Validation: Build succeeds; write a quick test op mode that queues a single waypoint and confirm the robot begins driving toward the target while reporting progress via telemetry.
 
+### Step 5 Findings (2025-09-28)
+- Introduced the `RobotTask` interface plus reusable `WaitTask` and `TimedDriveTask` samples that consume the shared `FieldRobot`/`RobotState` accessors.
+- FieldRobot now exposes `getRobotState()` so future tasks can read localization data without additional plumbing.
+
 ## Step 6: State Machine Infrastructure
 - Goal: Implement a task scheduler/state machine able to step through queued tasks sequentially.
 - Actions: Build a simple state machine loop (e.g., `TaskController`) that updates the active task, advances on completion, and handles interrupts such as stop requests.
 - Validation: Simulated run (robot disabled motors) shows state transitions in telemetry, and Gradle build remains green.
 
+### Step 6 Findings (2025-09-28)
+- Added `TaskController` to execute queued tasks sequentially and report the active task name for telemetry.
+- Created `Task Controller Sample` TeleOp demonstrating wait/drive sequences with live pose reporting; build succeeds on the updated branch.
+
 ## Step 7: Multi-Waypoint Execution
 - Goal: Demonstrate driving through multiple waypoints using the new system.
 - Actions: Extend the test op mode to queue several poses with diverse headings; integrate velocity constraints or drive power adjustments as needed.
 - Validation: Field test confirms the robot approximately reaches each waypoint within tolerance; capture logs/telemetry as evidence.
+- Subtask: Add a PID-based `DriveToPoseTask` that uses odometry to drive to a field-relative target, and exercise it inside the sample task op mode for indoor validation before field testing.
 
 ## Step 8: Field-Centric Op Modes
 - Goal: Deliver the new TeleOp and autonomous op modes built on `FieldLinearOpMode` with localization-aware driving logic.
