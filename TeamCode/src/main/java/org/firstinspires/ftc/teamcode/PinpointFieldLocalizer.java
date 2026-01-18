@@ -18,6 +18,7 @@ public class PinpointFieldLocalizer {
     private final GoBildaPinpointDriver pinpoint;
     private Pose2d poseEstimate = new Pose2d();
     private Pose2d poseVelocity = new Pose2d();
+    private double headingVelocityRadPerSec = 0.0;
     private GoBildaPinpointDriver.DeviceStatus lastStatus = GoBildaPinpointDriver.DeviceStatus.NOT_READY;
 
     public PinpointFieldLocalizer(HardwareMap hardwareMap) {
@@ -52,12 +53,13 @@ public class PinpointFieldLocalizer {
         poseEstimate = new Pose2d(
             mmToInches(pinpoint.getPosX()),
             mmToInches(pinpoint.getPosY()),
-            pinpoint.getHeading()
+            Math.toRadians(pinpoint.getHeading())
         );
+        headingVelocityRadPerSec = Math.toRadians(pinpoint.getHeadingVelocity());
         poseVelocity = new Pose2d(
             mmToInches(pinpoint.getVelX()),
             mmToInches(pinpoint.getVelY()),
-            pinpoint.getHeadingVelocity()
+            poseEstimate.getHeading() // Keep velocity frame aligned to robot heading
         );
     }
 
@@ -77,6 +79,10 @@ public class PinpointFieldLocalizer {
 
     public Pose2d getPoseVelocity() {
         return poseVelocity;
+    }
+
+    public double getHeadingVelocityRadPerSec() {
+        return headingVelocityRadPerSec;
     }
 
     public int getForwardEncoderTicks() {

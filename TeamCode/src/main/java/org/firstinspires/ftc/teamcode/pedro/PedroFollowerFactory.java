@@ -6,6 +6,7 @@ import com.pedropathing.ftc.FollowerBuilder;
 import com.pedropathing.ftc.drivetrains.MecanumConstants;
 import com.pedropathing.paths.PathConstraints;
 import com.qualcomm.robotcore.hardware.HardwareMap;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import org.firstinspires.ftc.teamcode.PinpointFieldLocalizer;
 import org.firstinspires.ftc.teamcode.MecanumDrive;
 import org.firstinspires.ftc.teamcode.config.PedroConfig;
@@ -25,6 +26,10 @@ public final class PedroFollowerFactory {
                 .leftRearMotorName("back_left")
                 .rightFrontMotorName("front_right")
                 .rightRearMotorName("back_right")
+                .leftFrontMotorDirection(DcMotorSimple.Direction.REVERSE)
+                .leftRearMotorDirection(DcMotorSimple.Direction.REVERSE)
+                .rightFrontMotorDirection(DcMotorSimple.Direction.FORWARD)
+                .rightRearMotorDirection(DcMotorSimple.Direction.FORWARD)
                 .maxPower(1.0)
                 .useBrakeModeInTeleOp(true);
 

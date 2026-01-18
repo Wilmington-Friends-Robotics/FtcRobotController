@@ -30,13 +30,14 @@ public class RobotState {
     public synchronized void updateFrom(PinpointFieldLocalizer localizer) {
         Pose2d rawPose = localizer.getPoseEstimate();
         Pose2d rawVelocity = localizer.getPoseVelocity();
+        double rawHeadingVel = localizer.getHeadingVelocityRadPerSec();
 
         double filteredX = applyDeadband(rawPose.getX(), rawVelocity.getX());
         double filteredY = applyDeadband(rawPose.getY(), rawVelocity.getY());
 
         poseInches = new Pose2d(filteredX, filteredY, rawPose.getHeading());
         velocityInches = rawVelocity;
-        headingVelocityRadPerSec = rawVelocity.getHeading();
+        headingVelocityRadPerSec = rawHeadingVel;
         poseMillimeters = new Pose2D(
             DistanceUnit.MM,
             poseInches.getX() * 25.4,

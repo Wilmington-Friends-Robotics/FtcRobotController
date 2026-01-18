@@ -51,6 +51,7 @@ public class PedroPinpointLocalizer implements Localizer {
         delegate.update();
         Pose2d rrPose = delegate.getPoseEstimate();
         Pose2d rrVel = delegate.getPoseVelocity();
+        // Pass through pose and heading as-is to avoid unintended rotations.
         pose = new Pose(rrPose.getX(), rrPose.getY(), rrPose.getHeading(), PedroCoordinates.INSTANCE);
         velocity = new Pose(rrVel.getX(), rrVel.getY(), rrVel.getHeading(), PedroCoordinates.INSTANCE);
     }
@@ -72,7 +73,8 @@ public class PedroPinpointLocalizer implements Localizer {
 
     @Override
     public double getTurningMultiplier() {
-        return 1.0;
+        // Disable Pedro's heading correction for now to avoid slow unintended rotation.
+        return 0.0;
     }
 
     @Override
