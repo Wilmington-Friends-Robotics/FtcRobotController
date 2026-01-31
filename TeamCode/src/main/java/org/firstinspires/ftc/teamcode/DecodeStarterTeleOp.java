@@ -9,8 +9,10 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 
 @TeleOp(name = "DecodeStarterTeleOp", group = "TeleOp")
 public class DecodeStarterTeleOp extends OpMode {
-    private DcMotor leftMotor;
-    private DcMotor rightMotor;
+    private DcMotorEx frontLeftMotor;
+    private DcMotorEx frontRightMotor;
+    private DcMotorEx backLeftMotor;
+    private DcMotorEx backRightMotor;
     private DcMotorEx flywheel;
     private Servo rightServo;
     private Servo leftServo;
@@ -21,13 +23,18 @@ public class DecodeStarterTeleOp extends OpMode {
     private boolean servoSequenceActive = false;
     private int servoPhase = 0;
     private final ElapsedTime servoMoveTimer = new ElapsedTime();
-    private static final double FLYWHEEL_TARGET_TPS = 1200.0;
+    private static final double FLYWHEEL_TARGET_TPS = 1300.0;
     private static final double FLYWHEEL_MAX_TPS = 2540.0; // Set this to your measured max TPS.
-    private static final double FLYWHEEL_P = 0.1;
+    private static final double FLYWHEEL_P = 1;
     private static final double FLYWHEEL_I = 0.0;
     private static final double FLYWHEEL_D = 0.0;
     private static final double FLYWHEEL_F = 32767.0 / FLYWHEEL_MAX_TPS;
     private static final double FLYWHEEL_READY_TPS_TOLERANCE = 50.0;
+    private static final double DRIVE_MAX_TPS = 2860.0; // Set this to your measured drive max TPS.
+    private static final double DRIVE_P = 0.1;
+    private static final double DRIVE_I = 0.0;
+    private static final double DRIVE_D = 0.0;
+    private static final double DRIVE_F = 32767.0 / DRIVE_MAX_TPS;
     private static final double SERVO_MOVE_DURATION_S = 0.5; // Calibrate for ~180 degrees.
     private static final double RIGHT_CW_POS = 0.0;
     private static final double RIGHT_CCW_POS = 1.0;
@@ -36,32 +43,48 @@ public class DecodeStarterTeleOp extends OpMode {
 
     @Override
     public void init() {
-        leftMotor = hardwareMap.get(DcMotor.class, "left");
-        rightMotor = hardwareMap.get(DcMotor.class, "right");
+        frontLeftMotor = hardwareMap.get(DcMotorEx.class, "front_left");
+        frontRightMotor = hardwareMap.get(DcMotorEx.class, "front_right");
+        backLeftMotor = hardwareMap.get(DcMotorEx.class, "back_left");
+        backRightMotor = hardwareMap.get(DcMotorEx.class, "back_right");
         flywheel = hardwareMap.get(DcMotorEx.class, "flywheel");
         rightServo = hardwareMap.get(Servo.class, "right_servo");
         leftServo = hardwareMap.get(Servo.class, "left_servo");
 
-        leftMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        rightMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        frontLeftMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        frontRightMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        backLeftMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        backRightMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         flywheel.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
-        leftMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        rightMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        frontLeftMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        frontRightMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        backLeftMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        backRightMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        frontLeftMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        frontRightMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        backLeftMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        backRightMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        frontLeftMotor.setVelocityPIDFCoefficients(DRIVE_P, DRIVE_I, DRIVE_D, DRIVE_F);
+        frontRightMotor.setVelocityPIDFCoefficients(DRIVE_P, DRIVE_I, DRIVE_D, DRIVE_F);
+        backLeftMotor.setVelocityPIDFCoefficients(DRIVE_P, DRIVE_I, DRIVE_D, DRIVE_F);
+        backRightMotor.setVelocityPIDFCoefficients(DRIVE_P, DRIVE_I, DRIVE_D, DRIVE_F);
         flywheel.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         flywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         flywheel.setVelocityPIDFCoefficients(FLYWHEEL_P, FLYWHEEL_I, FLYWHEEL_D, FLYWHEEL_F);
 
         // Reverse one side so forward stick makes the robot go forward.
-        leftMotor.setDirection(DcMotor.Direction.FORWARD);
-        rightMotor.setDirection(DcMotor.Direction.REVERSE);
+        frontLeftMotor.setDirection(DcMotor.Direction.FORWARD);
+        backLeftMotor.setDirection(DcMotor.Direction.FORWARD);
+        frontRightMotor.setDirection(DcMotor.Direction.REVERSE);
+        backRightMotor.setDirection(DcMotor.Direction.REVERSE);
         flywheel.setDirection(DcMotor.Direction.FORWARD);
         flywheel.setPower(0);
         rightServo.setPosition(RIGHT_CCW_POS);
         leftServo.setPosition(LEFT_CW_POS);
 
         telemetry.addLine("DecodeStarterTeleOp ready");
-        telemetry.addLine("Left stick Y = drive, Right stick X = turn");
+        telemetry.addLine("Left stick Y = drive, Left stick X = strafe, Right stick X = turn");
         telemetry.addLine("A button = toggle flywheel");
         telemetry.addLine("B button = move servos 180 degrees, then reverse");
         telemetry.update();
@@ -70,9 +93,11 @@ public class DecodeStarterTeleOp extends OpMode {
     @Override
     public void loop() {
         double forward = -gamepad1.left_stick_y;
+        double strafe = gamepad1.left_stick_x;
         double turn = gamepad1.right_stick_x;
 
         forward = applyDeadband(forward, 0.05);
+        strafe = applyDeadband(strafe, 0.05);
         turn = applyDeadband(turn, 0.05);
 
         if (gamepad1.a) {
@@ -127,18 +152,38 @@ public class DecodeStarterTeleOp extends OpMode {
             }
         }
 
-        double leftPower = forward - turn;
-        double rightPower = forward + turn;
+        double denom = Math.max(1.0, Math.abs(forward) + Math.abs(strafe) + Math.abs(turn));
+        double frontLeftPower = (- forward - strafe - turn) / denom;
+        double frontRightPower = (forward - strafe - turn) / denom;
+        double backLeftPower = (- forward + strafe - turn) / denom;
+        double backRightPower = (- forward - strafe + turn) / denom;
 
-        double maxMag = Math.max(1, Math.max(Math.abs(leftPower), Math.abs(rightPower)));
-        leftPower /= maxMag * 1.5;
-        rightPower /= maxMag * 1.5;
+        double frontLeftTargetTps = clamp(frontLeftPower * DRIVE_MAX_TPS, -DRIVE_MAX_TPS, DRIVE_MAX_TPS);
+        double frontRightTargetTps = clamp(frontRightPower * DRIVE_MAX_TPS, -DRIVE_MAX_TPS, DRIVE_MAX_TPS);
+        double backLeftTargetTps = clamp(backLeftPower * DRIVE_MAX_TPS, -DRIVE_MAX_TPS, DRIVE_MAX_TPS);
+        double backRightTargetTps = clamp(backRightPower * DRIVE_MAX_TPS, -DRIVE_MAX_TPS, DRIVE_MAX_TPS);
+        frontLeftMotor.setVelocity(frontLeftTargetTps);
+        frontRightMotor.setVelocity(frontRightTargetTps);
+        backLeftMotor.setVelocity(backLeftTargetTps);
+        backRightMotor.setVelocity(backRightTargetTps);
 
-        leftMotor.setPower(leftPower);
-        rightMotor.setPower(rightPower);
+        double frontLeftActualTps = frontLeftMotor.getVelocity();
+        double frontRightActualTps = frontRightMotor.getVelocity();
+        double backLeftActualTps = backLeftMotor.getVelocity();
+        double backRightActualTps = backRightMotor.getVelocity();
 
-        telemetry.addData("Left Power", "%.2f", leftPower);
-        telemetry.addData("Right Power", "%.2f", rightPower);
+        telemetry.addData("FL Cmd", "%.2f", frontLeftPower);
+        telemetry.addData("FR Cmd", "%.2f", frontRightPower);
+        telemetry.addData("BL Cmd", "%.2f", backLeftPower);
+        telemetry.addData("BR Cmd", "%.2f", backRightPower);
+        telemetry.addData("FL Target TPS", "%.0f", frontLeftTargetTps);
+        telemetry.addData("FR Target TPS", "%.0f", frontRightTargetTps);
+        telemetry.addData("BL Target TPS", "%.0f", backLeftTargetTps);
+        telemetry.addData("BR Target TPS", "%.0f", backRightTargetTps);
+        telemetry.addData("FL TPS", "%.0f", frontLeftActualTps);
+        telemetry.addData("FR TPS", "%.0f", frontRightActualTps);
+        telemetry.addData("BL TPS", "%.0f", backLeftActualTps);
+        telemetry.addData("BR TPS", "%.0f", backRightActualTps);
         telemetry.addData("Flywheel", flywheelOn ? "ON" : "OFF");
         telemetry.addData("Flywheel Target TPS", "%.0f", flywheelOn ? FLYWHEEL_TARGET_TPS : 0.0);
         telemetry.addData("Flywheel TPS", "%.1f", flywheelTps);
@@ -150,6 +195,10 @@ public class DecodeStarterTeleOp extends OpMode {
 
     private double applyDeadband(double value, double threshold) {
         return Math.abs(value) < threshold ? 0.0 : value;
+    }
+
+    private double clamp(double value, double min, double max) {
+        return Math.max(min, Math.min(max, value));
     }
 
     private void startServoSequence() {

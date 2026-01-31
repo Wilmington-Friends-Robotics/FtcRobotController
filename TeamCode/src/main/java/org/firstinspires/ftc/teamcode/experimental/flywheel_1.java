@@ -20,7 +20,6 @@ public class flywheel_1 extends LinearOpMode {
     public void runOpMode() {
         flywheelSpeed = hardwareMap.get(CRServo.class, "flywheelSpeed");
         waitForStart();
-        eject(2.0, 5.0);
         while (opModeIsActive()) {
             idle();
         }
