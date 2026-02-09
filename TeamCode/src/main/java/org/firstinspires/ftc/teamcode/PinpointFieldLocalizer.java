@@ -53,9 +53,9 @@ public class PinpointFieldLocalizer {
         poseEstimate = new Pose2d(
             mmToInches(pinpoint.getPosX()),
             mmToInches(pinpoint.getPosY()),
-            Math.toRadians(pinpoint.getHeading())
+            pinpoint.getHeading()
         );
-        headingVelocityRadPerSec = Math.toRadians(pinpoint.getHeadingVelocity());
+        headingVelocityRadPerSec = pinpoint.getHeadingVelocity();
         poseVelocity = new Pose2d(
             mmToInches(pinpoint.getVelX()),
             mmToInches(pinpoint.getVelY()),

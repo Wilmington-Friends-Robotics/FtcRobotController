@@ -6,13 +6,9 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
-import com.acmerobotics.roadrunner.geometry.Pose2d;
-import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
-import org.firstinspires.ftc.vision.VisionPortal;
-import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
-import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 
-public class DecodeStarterTeleOp extends OpMode {
+@TeleOp(name = "DecodeStarterTeleOp (No Cameras)", group = "TeleOp")
+public class DecodeStarterTeleOpNoCamera extends OpMode {
     private DcMotorEx frontLeftMotor;
     private DcMotorEx frontRightMotor;
     private DcMotorEx backLeftMotor;
@@ -21,15 +17,9 @@ public class DecodeStarterTeleOp extends OpMode {
     private DcMotorEx flywheel;
     private Servo rightServo;
     private Servo leftServo;
-    private VisionPortal leftPortal;
-    private VisionPortal rightPortal;
-    private AprilTagProcessor leftAprilTag;
-    private AprilTagProcessor rightAprilTag;
     private boolean flywheelOn = false;
     private boolean aWasPressed = false;
     private boolean bWasPressed = false;
-    private boolean isRedTeam = true;
-    private boolean lastTagFromLeft = true;
     private boolean fireQueued = false;
     private boolean servoSequenceActive = false;
     private int servoPhase = 0;
@@ -51,8 +41,6 @@ public class DecodeStarterTeleOp extends OpMode {
     private static final double RIGHT_CCW_POS = 1.0;
     private static final double LEFT_CW_POS = 0.0;
     private static final double LEFT_CCW_POS = 1.0;
-    private static final double LEFT_CAMERA_YAW_OFFSET_DEG = -90.0;
-    private static final double RIGHT_CAMERA_YAW_OFFSET_DEG = 90.0;
 
     @Override
     public void init() {
@@ -64,16 +52,6 @@ public class DecodeStarterTeleOp extends OpMode {
         flywheel = hardwareMap.get(DcMotorEx.class, "flywheel");
         rightServo = hardwareMap.get(Servo.class, "right_servo");
         leftServo = hardwareMap.get(Servo.class, "left_servo");
-        leftAprilTag = new AprilTagProcessor.Builder().build();
-        rightAprilTag = new AprilTagProcessor.Builder().build();
-        leftPortal = new VisionPortal.Builder()
-                .setCamera(hardwareMap.get(WebcamName.class, "left_webcam"))
-                .addProcessor(leftAprilTag)
-                .build();
-        rightPortal = new VisionPortal.Builder()
-                .setCamera(hardwareMap.get(WebcamName.class, "right_webcam"))
-                .addProcessor(rightAprilTag)
-                .build();
 
         frontLeftMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         frontRightMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
@@ -97,7 +75,6 @@ public class DecodeStarterTeleOp extends OpMode {
         flywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         flywheel.setVelocityPIDFCoefficients(FLYWHEEL_P, FLYWHEEL_I, FLYWHEEL_D, FLYWHEEL_F);
 
-        // Reverse one side so forward stick makes the robot go forward.
         frontLeftMotor.setDirection(DcMotor.Direction.REVERSE);
         backLeftMotor.setDirection(DcMotor.Direction.REVERSE);
         frontRightMotor.setDirection(DcMotor.Direction.REVERSE);
@@ -107,7 +84,7 @@ public class DecodeStarterTeleOp extends OpMode {
         rightServo.setPosition(RIGHT_CCW_POS);
         leftServo.setPosition(LEFT_CW_POS);
 
-        telemetry.addLine("DecodeStarterTeleOp ready");
+        telemetry.addLine("DecodeStarterTeleOp (No Cameras) ready");
         telemetry.addLine("Left stick Y = drive, Left stick X = strafe, Right stick X = turn");
         telemetry.addLine("A button = toggle flywheel");
         telemetry.addLine("B button = move servos 180 degrees, then reverse");
@@ -130,23 +107,6 @@ public class DecodeStarterTeleOp extends OpMode {
         double sinHeading = Math.sin(heading);
         double fieldForward = strafe * sinHeading + forward * cosHeading;
         double fieldStrafe = -(strafe * cosHeading - forward * sinHeading);
-
-        AprilTagDetection calibrationTag = findCalibrationTag();
-        if (calibrationTag != null) {
-            Double fieldHeadingDeg = getFieldHeadingDegForTag(calibrationTag.id);
-            if (fieldHeadingDeg != null) {
-                double cameraYawOffset = lastTagFromLeft ? LEFT_CAMERA_YAW_OFFSET_DEG : RIGHT_CAMERA_YAW_OFFSET_DEG;
-                double measuredYawDeg = calibrationTag.ftcPose.yaw + cameraYawOffset;
-                double desiredHeadingRad = Math.toRadians(fieldHeadingDeg - measuredYawDeg);
-                Pose2d pose = fieldLocalizer.getPoseEstimate();
-                fieldLocalizer.setPoseEstimate(new Pose2d(pose.getX(), pose.getY(), desiredHeadingRad));
-                heading = desiredHeadingRad;
-                cosHeading = Math.cos(heading);
-                sinHeading = Math.sin(heading);
-                fieldForward = strafe * sinHeading + forward * cosHeading;
-                fieldStrafe = strafe * cosHeading - forward * sinHeading;
-            }
-        }
 
         if (gamepad1.a) {
             if (!aWasPressed) {
@@ -239,7 +199,6 @@ public class DecodeStarterTeleOp extends OpMode {
         telemetry.addData("Servo Move", servoSequenceActive ? "ACTIVE" : "IDLE");
         telemetry.addData("Fire Queued", fireQueued ? "YES" : "NO");
         telemetry.addData("Heading (deg)", "%.1f", Math.toDegrees(heading));
-        telemetry.addData("Team", isRedTeam ? "RED" : "BLUE");
         telemetry.update();
     }
 
@@ -255,53 +214,5 @@ public class DecodeStarterTeleOp extends OpMode {
         servoSequenceActive = true;
         servoPhase = 1;
         servoMoveTimer.reset();
-    }
-
-    private AprilTagDetection findCalibrationTag() {
-        AprilTagDetection detection = getFirstTag(leftAprilTag);
-        if (detection != null) {
-            lastTagFromLeft = true;
-            return detection;
-        }
-        detection = getFirstTag(rightAprilTag);
-        if (detection != null) {
-            lastTagFromLeft = false;
-        }
-        return detection;
-    }
-
-    private AprilTagDetection getFirstTag(AprilTagProcessor processor) {
-        if (processor == null) {
-            return null;
-        }
-        for (AprilTagDetection detection : processor.getDetections()) {
-            if (detection != null && (detection.id == 20 || detection.id == 24)) {
-                return detection;
-            }
-        }
-        return null;
-    }
-
-    private Double getFieldHeadingDegForTag(int tagId) {
-        if (isRedTeam) {
-            if (tagId == 24) {
-                return 45.0;
-            }
-            if (tagId == 20) {
-                return 135.0;
-            }
-        } else {
-            if (tagId == 20) {
-                return -45.0;
-            }
-            if (tagId == 24) {
-                return -135.0;
-            }
-        }
-        return null;
-    }
-
-    protected void setTeamRed(boolean isRed) {
-        isRedTeam = isRed;
     }
 }
