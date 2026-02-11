@@ -7,7 +7,7 @@ import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
-@Autonomous(name = "DecodeStarterAuto", group = "Auto")
+@Autonomous(name = "00 DecodeStarterAuto", group = "00 DecodeStarter")
 public class DecodeStarterAuto extends LinearOpMode {
     private DcMotor frontLeftMotor;
     private DcMotor frontRightMotor;
@@ -29,9 +29,9 @@ public class DecodeStarterAuto extends LinearOpMode {
     private static final double FLYWHEEL_READY_TPS_TOLERANCE = 50.0;
     private static final double SERVO_MOVE_DURATION_S = 0.5;
     private static final double RIGHT_CW_POS = 0.0;
-    private static final double RIGHT_CCW_POS = 1.0;
+    private static final double RIGHT_CCW_POS = 0.5;
     private static final double LEFT_CW_POS = 0.0;
-    private static final double LEFT_CCW_POS = 1.0;
+    private static final double LEFT_CCW_POS = 0.5;
 
     @Override
     public void runOpMode() {
