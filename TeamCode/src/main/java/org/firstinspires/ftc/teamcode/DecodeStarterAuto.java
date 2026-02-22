@@ -7,7 +7,7 @@ import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
-@Autonomous(name = "DecodeStarterAuto", group = "zz DecodeStarter Legacy")
+@Autonomous(name = "00 DecodeStarterAuto", group = "zz DecodeStarter Legacy")
 public class DecodeStarterAuto extends LinearOpMode {
     private DcMotor frontLeftMotor;
     private DcMotor frontRightMotor;
@@ -20,7 +20,7 @@ public class DecodeStarterAuto extends LinearOpMode {
     private int servoPhase = 0;
     private final ElapsedTime servoMoveTimer = new ElapsedTime();
     private static final int TOTAL_SHOTS = 3;
-    private static final double FLYWHEEL_TARGET_TPS = 1250.0;
+    private static final double FLYWHEEL_TARGET_TPS = 1200.0;
     private static final double FLYWHEEL_MAX_TPS = 2540.0;
     private static final double FLYWHEEL_P = 0.1;
     private static final double FLYWHEEL_I = 0.0;
@@ -85,8 +85,8 @@ public class DecodeStarterAuto extends LinearOpMode {
         int shotsFired = 0;
         while (opModeIsActive() && (shotsFired < TOTAL_SHOTS || servoSequenceActive || shotsQueued > 0)) {
             double flywheelTps = flywheel.getVelocity();
-            boolean flywheelReady = Math.abs(flywheelTps - FLYWHEEL_TARGET_TPS)
-                    <= FLYWHEEL_READY_TPS_TOLERANCE;
+            boolean flywheelReady = flywheelTps >= FLYWHEEL_TARGET_TPS
+                    && flywheelTps <= (FLYWHEEL_TARGET_TPS + FLYWHEEL_READY_TPS_TOLERANCE);
 
             if (!servoSequenceActive && shotsQueued > 0 && flywheelReady) {
                 startServoSequence();
@@ -110,10 +110,11 @@ public class DecodeStarterAuto extends LinearOpMode {
 
         flywheel.setVelocity(0.0);
 
-        frontLeftMotor.setPower(0.5);
+        // Match teleop robot-centric mapping: backward is negative forward command.
+        frontLeftMotor.setPower(-0.5);
         frontRightMotor.setPower(-0.5);
-        backLeftMotor.setPower(0.5);
-        backRightMotor.setPower(0.5);
+        backLeftMotor.setPower(-0.5);
+        backRightMotor.setPower(-0.5);
         sleep(500);
         frontLeftMotor.setPower(0.0);
         frontRightMotor.setPower(0.0);

@@ -24,7 +24,8 @@ public class DecodeStarterTeleOpNoCameraNoFsd extends OpMode {
     private boolean servoSequenceActive = false;
     private int servoPhase = 0;
     private final ElapsedTime servoMoveTimer = new ElapsedTime();
-    private static final double FLYWHEEL_TARGET_TPS = 1200.0;
+    private static final double FLYWHEEL_IDLE_TARGET_TPS = 1000.0;
+    private static final double FLYWHEEL_SHOOT_TARGET_TPS = 1150.0;
     private static final double FLYWHEEL_MAX_TPS = 2540.0; // Set this to your measured max TPS.
     private static final double FLYWHEEL_P = 1;
     private static final double FLYWHEEL_I = 0.0;
@@ -94,7 +95,7 @@ public class DecodeStarterTeleOpNoCameraNoFsd extends OpMode {
     @Override
     public void loop() {
         double forward = -gamepad1.left_stick_y;
-        double strafe = -gamepad1.left_stick_x;
+        double strafe = gamepad1.left_stick_x;
         double turn = gamepad1.right_stick_x;
 
         forward = applyDeadband(forward, 0.05);
@@ -110,25 +111,16 @@ public class DecodeStarterTeleOpNoCameraNoFsd extends OpMode {
         if (gamepad1.a) {
             if (!aWasPressed) {
                 flywheelOn = !flywheelOn;
-                flywheel.setVelocity(flywheelOn ? FLYWHEEL_TARGET_TPS : 0.0);
                 aWasPressed = true;
             }
         } else {
             aWasPressed = false;
         }
 
-        double flywheelTps = flywheel.getVelocity();
-        boolean flywheelReady = flywheelOn
-                && Math.abs(flywheelTps - FLYWHEEL_TARGET_TPS) <= FLYWHEEL_READY_TPS_TOLERANCE;
-
         if (gamepad1.b) {
             if (!bWasPressed) {
                 if (flywheelOn) {
-                    if (!servoSequenceActive && flywheelReady) {
-                        startServoSequence();
-                    } else {
-                        fireQueued = true;
-                    }
+                    fireQueued = true;
                 }
                 bWasPressed = true;
             }
@@ -136,7 +128,18 @@ public class DecodeStarterTeleOpNoCameraNoFsd extends OpMode {
             bWasPressed = false;
         }
 
-        if (!servoSequenceActive && fireQueued && flywheelReady) {
+        boolean shootingRequested = fireQueued || servoSequenceActive;
+        double flywheelTargetTps = 0.0;
+        if (flywheelOn) {
+            flywheelTargetTps = shootingRequested ? FLYWHEEL_SHOOT_TARGET_TPS : FLYWHEEL_IDLE_TARGET_TPS;
+        }
+        flywheel.setVelocity(flywheelTargetTps);
+
+        double flywheelTps = flywheel.getVelocity();
+        boolean flywheelReadyForShot = flywheelOn
+                && Math.abs(flywheelTps - FLYWHEEL_SHOOT_TARGET_TPS) <= FLYWHEEL_READY_TPS_TOLERANCE;
+
+        if (!servoSequenceActive && fireQueued && flywheelReadyForShot) {
             startServoSequence();
             fireQueued = false;
         }
@@ -192,9 +195,9 @@ public class DecodeStarterTeleOpNoCameraNoFsd extends OpMode {
         telemetry.addData("BL TPS", "%.0f", backLeftActualTps);
         telemetry.addData("BR TPS", "%.0f", backRightActualTps);
         telemetry.addData("Flywheel", flywheelOn ? "ON" : "OFF");
-        telemetry.addData("Flywheel Target TPS", "%.0f", flywheelOn ? FLYWHEEL_TARGET_TPS : 0.0);
+        telemetry.addData("Flywheel Target TPS", "%.0f", flywheelTargetTps);
         telemetry.addData("Flywheel TPS", "%.1f", flywheelTps);
-        telemetry.addData("Flywheel Ready", flywheelReady ? "YES" : "NO");
+        telemetry.addData("Flywheel Ready", flywheelReadyForShot ? "YES" : "NO");
         telemetry.addData("Servo Move", servoSequenceActive ? "ACTIVE" : "IDLE");
         telemetry.addData("Fire Queued", fireQueued ? "YES" : "NO");
         telemetry.addData("Heading (deg)", "%.1f", Math.toDegrees(heading));
