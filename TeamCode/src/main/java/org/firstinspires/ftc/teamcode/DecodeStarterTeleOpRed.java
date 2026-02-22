@@ -2,7 +2,7 @@ package org.firstinspires.ftc.teamcode;
 
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
-@TeleOp(name = "00 DecodeStarterTeleOp (Red)", group = "00 DecodeStarter")
+@TeleOp(name = "DecodeStarterTeleOp (Red)", group = "zz DecodeStarter Legacy")
 public class DecodeStarterTeleOpRed extends DecodeStarterTeleOp {
     @Override
     public void init() {

@@ -7,7 +7,7 @@ import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
-@Autonomous(name = "00 DecodeStarterAuto", group = "00 DecodeStarter")
+@Autonomous(name = "DecodeStarterAuto", group = "zz DecodeStarter Legacy")
 public class DecodeStarterAuto extends LinearOpMode {
     private DcMotor frontLeftMotor;
     private DcMotor frontRightMotor;

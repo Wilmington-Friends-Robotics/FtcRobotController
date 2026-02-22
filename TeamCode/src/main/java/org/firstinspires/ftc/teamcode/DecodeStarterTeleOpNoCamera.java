@@ -7,7 +7,7 @@ import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
-@TeleOp(name = "00 DecodeStarterTeleOp (No Cameras)", group = "00 DecodeStarter")
+@TeleOp(name = "DecodeStarterTeleOp (No Cameras)", group = "zz DecodeStarter Legacy")
 public class DecodeStarterTeleOpNoCamera extends OpMode {
     private DcMotorEx frontLeftMotor;
     private DcMotorEx frontRightMotor;
