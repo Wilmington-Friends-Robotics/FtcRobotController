@@ -17,8 +17,7 @@ public class DecodeStarterTeleOpNoCameraNoFsd extends OpMode {
     private DcMotorEx flywheel;
     private Servo rightServo;
     private Servo leftServo;
-    private boolean flywheelOn = false;
-    private boolean aWasPressed = false;
+    private boolean flywheelOn = true;
     private boolean bWasPressed = false;
     private boolean fireQueued = false;
     private boolean servoSequenceActive = false;
@@ -41,7 +40,7 @@ public class DecodeStarterTeleOpNoCameraNoFsd extends OpMode {
     private static final double DRIVE_F = 32767.0 / DRIVE_MAX_TPS;
     private static final double SERVO_MOVE_DURATION_S = 0.5; // Calibrate for ~180 degrees.
     private static final double SHOT_BUFFER_CHECK_DELAY_S = 1.0;
-    private static final double DRIVE_SCALE_WHEN_FLYWHEEL_SPINUP = 0.65;
+    private static final double DRIVE_SCALE_WHEN_FLYWHEEL_SPINUP = 0.0;
     private static final double RIGHT_CW_POS = 0.0;
     private static final double RIGHT_CCW_POS = 0.5;
     private static final double LEFT_CW_POS = 0.0;
@@ -92,7 +91,7 @@ public class DecodeStarterTeleOpNoCameraNoFsd extends OpMode {
 
         telemetry.addLine("DecodeStarterTeleOp (No Cameras, No FSD) ready");
         telemetry.addLine("Left stick Y = drive, Left stick X = strafe, Right stick X = turn");
-        telemetry.addLine("A button = toggle flywheel");
+        telemetry.addLine("Flywheel = always on");
         telemetry.addLine("B button = move servos 180 degrees, then reverse");
         telemetry.update();
     }
@@ -113,20 +112,9 @@ public class DecodeStarterTeleOpNoCameraNoFsd extends OpMode {
         double driveStrafe = strafe;
         double turnCommand = turn;
 
-        if (gamepad1.a) {
-            if (!aWasPressed) {
-                flywheelOn = !flywheelOn;
-                aWasPressed = true;
-            }
-        } else {
-            aWasPressed = false;
-        }
-
         if (gamepad1.b) {
             if (!bWasPressed) {
-                if (flywheelOn) {
-                    fireQueued = true;
-                }
+                fireQueued = true;
                 bWasPressed = true;
             }
         } else {
