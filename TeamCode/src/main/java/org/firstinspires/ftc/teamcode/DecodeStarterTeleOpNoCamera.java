@@ -26,11 +26,6 @@ public class DecodeStarterTeleOpNoCamera extends OpMode {
     private final ElapsedTime servoMoveTimer = new ElapsedTime();
     private final ElapsedTime shotBufferTimer = new ElapsedTime();
     private boolean shotBufferDelayActive = false;
-    private final ElapsedTime flywheelDriveScalePidTimer = new ElapsedTime();
-    private double flywheelDriveScaleIntegral = 0.0;
-    private double flywheelDriveScalePrevError = 0.0;
-    private double flywheelDriveScalePrevTime = 0.0;
-    private boolean flywheelDriveScalePidInitialized = false;
     private final ElapsedTime headingHoldTimer = new ElapsedTime();
     private final ElapsedTime headingCaptureTimer = new ElapsedTime();
     private boolean headingHoldInitialized = false;
@@ -53,13 +48,7 @@ public class DecodeStarterTeleOpNoCamera extends OpMode {
     private static final double DRIVE_F = 32767.0 / DRIVE_MAX_TPS;
     private static final double SERVO_MOVE_DURATION_S = 0.5; // Calibrate for ~180 degrees.
     private static final double SHOT_BUFFER_CHECK_DELAY_S = 1.0;
-    private static final double DRIVE_SCALE_MIN_WHEN_FLYWHEEL_SPINUP = 0.55;
-    private static final double FLYWHEEL_DRIVE_SCALE_PID_KP = 1.10;
-    private static final double FLYWHEEL_DRIVE_SCALE_PID_KI = 0.35;
-    private static final double FLYWHEEL_DRIVE_SCALE_PID_KD = 0.0;
-    private static final double FLYWHEEL_DRIVE_SCALE_ERROR_DEADBAND_TPS = 15.0;
-    private static final double FLYWHEEL_DRIVE_SCALE_INTEGRAL_MAX = 1.0;
-    private static final double FLYWHEEL_DRIVE_SCALE_INTEGRAL_DECAY_PER_S = 2.0;
+    private static final double DRIVE_SCALE_WHEN_FLYWHEEL_SPINUP = 0.65;
     private static final double RIGHT_CW_POS = 0.0;
     private static final double RIGHT_CCW_POS = 0.5;
     private static final double LEFT_CW_POS = 0.0;
@@ -117,11 +106,6 @@ public class DecodeStarterTeleOpNoCamera extends OpMode {
         headingHoldTimer.reset();
         headingCaptureTimer.reset();
         shotBufferTimer.reset();
-        flywheelDriveScalePidTimer.reset();
-        flywheelDriveScaleIntegral = 0.0;
-        flywheelDriveScalePrevError = 0.0;
-        flywheelDriveScalePrevTime = 0.0;
-        flywheelDriveScalePidInitialized = false;
 
         telemetry.addLine("DecodeStarterTeleOp (No Cameras) ready");
         telemetry.addLine("Left stick Y = drive, Left stick X = strafe, Right stick X = turn");
@@ -211,7 +195,6 @@ public class DecodeStarterTeleOpNoCamera extends OpMode {
             aWasPressed = false;
         }
 
-        double flywheelTargetTps = flywheelOn ? FLYWHEEL_TARGET_TPS : 0.0;
         double flywheelTps = flywheel.getVelocity();
         boolean flywheelReady = flywheelOn
                 && Math.abs(flywheelTps - FLYWHEEL_TARGET_TPS) <= FLYWHEEL_READY_TPS_TOLERANCE;
@@ -259,14 +242,8 @@ public class DecodeStarterTeleOpNoCamera extends OpMode {
             }
         }
 
-        boolean driveScaleLimiterActive = flywheelOn && shootingRequested;
-        double driveScale = computeFlywheelDriveScale(
-                driveScaleLimiterActive,
-                flywheelTargetTps,
-                flywheelTps);
-        double flywheelScaleErrorTps = driveScaleLimiterActive
-                ? Math.max(0.0, flywheelTargetTps - flywheelTps)
-                : 0.0;
+        double driveScale = (flywheelOn && shootingRequested && !flywheelReady)
+                ? DRIVE_SCALE_WHEN_FLYWHEEL_SPINUP : 1.0;
         double driveForwardCommand = fieldForward * driveScale;
         double driveStrafeCommand = fieldStrafe * driveScale;
         double driveTurnCommand = turnCommand * driveScale;
@@ -305,12 +282,10 @@ public class DecodeStarterTeleOpNoCamera extends OpMode {
         telemetry.addData("BL TPS", "%.0f", backLeftActualTps);
         telemetry.addData("BR TPS", "%.0f", backRightActualTps);
         telemetry.addData("Flywheel", flywheelOn ? "ON" : "OFF");
-        telemetry.addData("Flywheel Target TPS", "%.0f", flywheelTargetTps);
+        telemetry.addData("Flywheel Target TPS", "%.0f", flywheelOn ? FLYWHEEL_TARGET_TPS : 0.0);
         telemetry.addData("Flywheel TPS", "%.1f", flywheelTps);
         telemetry.addData("Flywheel Ready", flywheelReady ? "YES" : "NO");
         telemetry.addData("Drive Scale", "%.2f", driveScale);
-        telemetry.addData("Scale Err TPS", "%.1f", flywheelScaleErrorTps);
-        telemetry.addData("Scale PID I", "%.3f", flywheelDriveScaleIntegral);
         telemetry.addData("Servo Move", servoSequenceActive ? "ACTIVE" : "IDLE");
         telemetry.addData("Fire Queued", fireQueued ? "YES" : "NO");
         telemetry.addData("Heading (deg)", "%.1f", Math.toDegrees(heading));
@@ -339,57 +314,6 @@ public class DecodeStarterTeleOpNoCamera extends OpMode {
             angle += 2.0 * Math.PI;
         }
         return angle;
-    }
-
-    private double computeFlywheelDriveScale(boolean active, double targetTps, double measuredTps) {
-        if (!active || targetTps <= 0.0) {
-            flywheelDriveScaleIntegral = 0.0;
-            flywheelDriveScalePrevError = 0.0;
-            flywheelDriveScalePidInitialized = false;
-            return 1.0;
-        }
-
-        double now = flywheelDriveScalePidTimer.seconds();
-        if (!flywheelDriveScalePidInitialized) {
-            flywheelDriveScalePidInitialized = true;
-            flywheelDriveScalePrevTime = now;
-            flywheelDriveScalePrevError = 0.0;
-            return 1.0;
-        }
-
-        double dt = now - flywheelDriveScalePrevTime;
-        flywheelDriveScalePrevTime = now;
-        if (dt <= 0.0) {
-            return 1.0;
-        }
-
-        double errorTps = targetTps - measuredTps;
-        if (errorTps < FLYWHEEL_DRIVE_SCALE_ERROR_DEADBAND_TPS) {
-            errorTps = 0.0;
-        }
-
-        double errorNorm = clamp(errorTps / targetTps, 0.0, 1.0);
-        if (errorNorm > 0.0) {
-            flywheelDriveScaleIntegral += errorNorm * dt;
-            flywheelDriveScaleIntegral = clamp(
-                    flywheelDriveScaleIntegral,
-                    0.0,
-                    FLYWHEEL_DRIVE_SCALE_INTEGRAL_MAX);
-        } else {
-            flywheelDriveScaleIntegral = Math.max(
-                    0.0,
-                    flywheelDriveScaleIntegral - FLYWHEEL_DRIVE_SCALE_INTEGRAL_DECAY_PER_S * dt);
-        }
-
-        double derivative = (errorNorm - flywheelDriveScalePrevError) / dt;
-        flywheelDriveScalePrevError = errorNorm;
-
-        double reduction = FLYWHEEL_DRIVE_SCALE_PID_KP * errorNorm
-                + FLYWHEEL_DRIVE_SCALE_PID_KI * flywheelDriveScaleIntegral
-                + FLYWHEEL_DRIVE_SCALE_PID_KD * derivative;
-        double maxReduction = 1.0 - DRIVE_SCALE_MIN_WHEN_FLYWHEEL_SPINUP;
-        reduction = clamp(reduction, 0.0, maxReduction);
-        return 1.0 - reduction;
     }
 
     private void startServoSequence() {
