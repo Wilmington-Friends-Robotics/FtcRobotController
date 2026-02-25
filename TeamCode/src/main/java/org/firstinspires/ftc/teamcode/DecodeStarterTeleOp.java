@@ -34,6 +34,8 @@ public class DecodeStarterTeleOp extends OpMode {
     private boolean servoSequenceActive = false;
     private int servoPhase = 0;
     private final ElapsedTime servoMoveTimer = new ElapsedTime();
+    private final ElapsedTime shotBufferTimer = new ElapsedTime();
+    private boolean shotBufferDelayActive = false;
     private final ElapsedTime headingHoldTimer = new ElapsedTime();
     private final ElapsedTime headingCaptureTimer = new ElapsedTime();
     private boolean headingHoldInitialized = false;
@@ -55,6 +57,8 @@ public class DecodeStarterTeleOp extends OpMode {
     private static final double DRIVE_D = 0.0;
     private static final double DRIVE_F = 32767.0 / DRIVE_MAX_TPS;
     private static final double SERVO_MOVE_DURATION_S = 0.5; // Calibrate for ~180 degrees.
+    private static final double SHOT_BUFFER_CHECK_DELAY_S = 1.0;
+    private static final double DRIVE_SCALE_WHEN_FLYWHEEL_SPINUP = 0.65;
     private static final double RIGHT_CW_POS = 0.0;
     private static final double RIGHT_CCW_POS = 0.5;
     private static final double LEFT_CW_POS = 0.0;
@@ -124,6 +128,7 @@ public class DecodeStarterTeleOp extends OpMode {
         leftServo.setPosition(LEFT_CW_POS);
         headingHoldTimer.reset();
         headingCaptureTimer.reset();
+        shotBufferTimer.reset();
 
         telemetry.addLine("DecodeStarterTeleOp ready");
         telemetry.addLine("Left stick Y = drive, Left stick X = strafe, Right stick X = turn");
@@ -252,7 +257,10 @@ public class DecodeStarterTeleOp extends OpMode {
             bWasPressed = false;
         }
 
-        if (!servoSequenceActive && fireQueued && flywheelReady) {
+        boolean shootingRequested = fireQueued || servoSequenceActive;
+        boolean canCheckBufferedShot = !shotBufferDelayActive
+                || shotBufferTimer.seconds() >= SHOT_BUFFER_CHECK_DELAY_S;
+        if (!servoSequenceActive && fireQueued && canCheckBufferedShot && flywheelReady) {
             startServoSequence();
             fireQueued = false;
         }
@@ -271,15 +279,24 @@ public class DecodeStarterTeleOp extends OpMode {
                 if (servoMoveTimer.seconds() >= SERVO_MOVE_DURATION_S) {
                     servoSequenceActive = false;
                     servoPhase = 0;
+                    shotBufferDelayActive = true;
+                    shotBufferTimer.reset();
                 }
             }
         }
 
-        double denom = Math.max(1.0, Math.abs(fieldForward) + Math.abs(fieldStrafe) + Math.abs(turnCommand));
-        double frontLeftPower = (fieldForward + fieldStrafe + turnCommand) / denom;
-        double frontRightPower = (fieldForward - fieldStrafe - turnCommand) / denom;
-        double backLeftPower = (fieldForward - fieldStrafe + turnCommand) / denom;
-        double backRightPower = (fieldForward + fieldStrafe - turnCommand) / denom;
+        double driveScale = (flywheelOn && shootingRequested && !flywheelReady)
+                ? DRIVE_SCALE_WHEN_FLYWHEEL_SPINUP : 1.0;
+        double driveForwardCommand = fieldForward * driveScale;
+        double driveStrafeCommand = fieldStrafe * driveScale;
+        double driveTurnCommand = turnCommand * driveScale;
+
+        double denom = Math.max(1.0,
+                Math.abs(driveForwardCommand) + Math.abs(driveStrafeCommand) + Math.abs(driveTurnCommand));
+        double frontLeftPower = (driveForwardCommand + driveStrafeCommand + driveTurnCommand) / denom;
+        double frontRightPower = (driveForwardCommand - driveStrafeCommand - driveTurnCommand) / denom;
+        double backLeftPower = (driveForwardCommand - driveStrafeCommand + driveTurnCommand) / denom;
+        double backRightPower = (driveForwardCommand + driveStrafeCommand - driveTurnCommand) / denom;
 
         double frontLeftTargetTps = clamp(frontLeftPower * DRIVE_MAX_TPS, -DRIVE_MAX_TPS, DRIVE_MAX_TPS);
         double frontRightTargetTps = clamp(frontRightPower * DRIVE_MAX_TPS, -DRIVE_MAX_TPS, DRIVE_MAX_TPS);
@@ -311,6 +328,7 @@ public class DecodeStarterTeleOp extends OpMode {
         telemetry.addData("Flywheel Target TPS", "%.0f", flywheelOn ? FLYWHEEL_TARGET_TPS : 0.0);
         telemetry.addData("Flywheel TPS", "%.1f", flywheelTps);
         telemetry.addData("Flywheel Ready", flywheelReady ? "YES" : "NO");
+        telemetry.addData("Drive Scale", "%.2f", driveScale);
         telemetry.addData("Servo Move", servoSequenceActive ? "ACTIVE" : "IDLE");
         telemetry.addData("Fire Queued", fireQueued ? "YES" : "NO");
         telemetry.addData("Heading (deg)", "%.1f", Math.toDegrees(heading));

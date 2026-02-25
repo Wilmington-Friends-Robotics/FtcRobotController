@@ -3,6 +3,7 @@ package org.firstinspires.ftc.teamcode;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 
 @TeleOp(name = "TeleOpMecanumDrive", group = "TeleOp")
 public class TeleOpMecanumDrive extends OpMode {
@@ -20,6 +21,13 @@ public class TeleOpMecanumDrive extends OpMode {
 
         // Initialize subsystems
         mecanumDrive = new MecanumDrive(frontLeftMotor, frontRightMotor, backLeftMotor, backRightMotor);
+        // Flip the right side only for this opmode.
+        mecanumDrive.setMotorDirections(
+                DcMotorSimple.Direction.FORWARD,
+                DcMotorSimple.Direction.REVERSE,
+                DcMotorSimple.Direction.FORWARD,
+                DcMotorSimple.Direction.REVERSE
+        );
         joystickController = new JoystickController(gamepad1, mecanumDrive);
 
         // Initialize the complete robot
