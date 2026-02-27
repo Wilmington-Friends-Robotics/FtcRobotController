@@ -108,6 +108,8 @@ import org.firstinspires.ftc.onbotjava.OnBotJavaProgrammingMode;
 import org.firstinspires.ftc.robotcore.external.navigation.MotionDetection;
 import org.firstinspires.ftc.robotcore.internal.hardware.android.AndroidBoard;
 import org.firstinspires.ftc.robotcore.internal.network.DeviceNameManagerFactory;
+import org.firstinspires.ftc.robotcore.internal.network.InvalidNetworkSettingException;
+import org.firstinspires.ftc.robotcore.internal.network.PasswordManagerFactory;
 import org.firstinspires.ftc.robotcore.internal.network.PreferenceRemoterRC;
 import org.firstinspires.ftc.robotcore.internal.network.StartResult;
 import org.firstinspires.ftc.robotcore.internal.network.WifiDirectChannelChanger;
@@ -138,6 +140,8 @@ public class FtcRobotControllerActivity extends Activity
   {
   public static final String TAG = "RCActivity";
   public String getTag() { return TAG; }
+  private static final String REQUIRED_RC_WIFI_NAME = BuildConfig.RC_WIFI_NAME;
+  private static final String REQUIRED_RC_WIFI_PASSWORD = BuildConfig.RC_WIFI_PASSWORD;
 
   private static final int REQUEST_CONFIG_WIFI_CHANNEL = 1;
   private static final int NUM_GAMEPADS = 2;
@@ -384,6 +388,7 @@ public class FtcRobotControllerActivity extends Activity
     callback = createUICallback(updateUI);
 
     PreferenceManager.setDefaultValues(this, R.xml.app_settings, false);
+    enforceRequiredNetworkIdentity();
 
     WifiManager wifiManager = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
     wifiLock = wifiManager.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "");
@@ -409,6 +414,24 @@ public class FtcRobotControllerActivity extends Activity
     checkPreferredChannel();
 
     AnnotatedHooksClassFilter.getInstance().callOnCreateMethods(this);
+  }
+
+  private void enforceRequiredNetworkIdentity() {
+    try {
+      DeviceNameManagerFactory.getInstance().setDeviceName(REQUIRED_RC_WIFI_NAME, true);
+    } catch (InvalidNetworkSettingException e) {
+      RobotLog.ee(TAG, e, "Unable to apply Wi-Fi name: %s", REQUIRED_RC_WIFI_NAME);
+    } catch (RuntimeException e) {
+      RobotLog.ee(TAG, e, "Unexpected error applying Wi-Fi name");
+    }
+
+    try {
+      PasswordManagerFactory.getInstance().setPassword(REQUIRED_RC_WIFI_PASSWORD, true);
+    } catch (InvalidNetworkSettingException e) {
+      RobotLog.ee(TAG, e, "Unable to apply Wi-Fi password");
+    } catch (RuntimeException e) {
+      RobotLog.ee(TAG, e, "Unexpected error applying Wi-Fi password");
+    }
   }
 
   protected UpdateUI createUpdateUI() {

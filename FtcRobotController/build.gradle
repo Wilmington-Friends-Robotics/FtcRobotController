@@ -1,9 +1,24 @@
 import java.text.SimpleDateFormat
+import java.util.Properties
 
 //
 // build.gradle in FtcRobotController
 //
 apply plugin: 'com.android.library'
+
+def rcSecrets = new Properties()
+def rcSecretsFile = rootProject.file("rc_secrets.properties")
+if (rcSecretsFile.exists()) {
+    rcSecretsFile.withInputStream { stream ->
+        rcSecrets.load(stream)
+    }
+}
+
+def rcWifiName = rcSecrets.getProperty("RC_WIFI_NAME", "7584-RC")
+def rcWifiPassword = rcSecrets.getProperty("RC_WIFI_PASSWORD", "password")
+def quoteForBuildConfig = { value ->
+    "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+}
 
 android {
 
@@ -12,6 +27,8 @@ android {
         //noinspection ExpiredTargetSdkVersion
         targetSdkVersion 28
         buildConfigField "String", "APP_BUILD_TIME", '"' + (new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ", Locale.ROOT).format(new Date())) + '"'
+        buildConfigField "String", "RC_WIFI_NAME", quoteForBuildConfig(rcWifiName)
+        buildConfigField "String", "RC_WIFI_PASSWORD", quoteForBuildConfig(rcWifiPassword)
     }
 
     buildFeatures {
