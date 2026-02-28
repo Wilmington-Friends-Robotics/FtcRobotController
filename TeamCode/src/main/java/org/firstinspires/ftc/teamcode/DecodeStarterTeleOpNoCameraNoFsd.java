@@ -26,7 +26,7 @@ public class DecodeStarterTeleOpNoCameraNoFsd extends OpMode {
     private final ElapsedTime shotBufferTimer = new ElapsedTime();
     private boolean shotBufferDelayActive = false;
     private static final double FLYWHEEL_IDLE_TARGET_TPS = 1000.0;
-    private static final double FLYWHEEL_SHOOT_TARGET_TPS = 1150.0;
+    private static final double FLYWHEEL_SHOOT_TARGET_TPS = 1170.0;
     private static final double FLYWHEEL_MAX_TPS = 2540.0; // Set this to your measured max TPS.
     private static final double FLYWHEEL_P = 1;
     private static final double FLYWHEEL_I = 0.0;
@@ -42,9 +42,9 @@ public class DecodeStarterTeleOpNoCameraNoFsd extends OpMode {
     private static final double SHOT_BUFFER_CHECK_DELAY_S = 1.0;
     private static final double DRIVE_SCALE_WHEN_FLYWHEEL_SPINUP = 0.0;
     private static final double RIGHT_CW_POS = 0.0;
-    private static final double RIGHT_CCW_POS = 0.5;
+    private static final double RIGHT_CCW_POS = 0.6;
     private static final double LEFT_CW_POS = 0.0;
-    private static final double LEFT_CCW_POS = 0.5;
+    private static final double LEFT_CCW_POS = 0.6;
 
     @Override
     public void init() {

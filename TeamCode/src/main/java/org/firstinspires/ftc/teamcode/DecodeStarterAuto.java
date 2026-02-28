@@ -20,7 +20,7 @@ public class DecodeStarterAuto extends LinearOpMode {
     private int servoPhase = 0;
     private final ElapsedTime servoMoveTimer = new ElapsedTime();
     private static final int TOTAL_SHOTS = 3;
-    private static final double FLYWHEEL_TARGET_TPS = 1200.0;
+    private static final double FLYWHEEL_TARGET_TPS = 1170.0;
     private static final double FLYWHEEL_MAX_TPS = 2540.0;
     private static final double FLYWHEEL_P = 0.1;
     private static final double FLYWHEEL_I = 0.0;
