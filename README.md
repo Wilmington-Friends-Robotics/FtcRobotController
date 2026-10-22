@@ -1,3 +1,5 @@
+## The following README is from the parent repository published by FTC.
+
 ## NOTICE
 
 This repository contains the public FTC SDK for the BIOBUZZ (2026-2027) competition season.
